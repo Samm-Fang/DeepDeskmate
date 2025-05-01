@@ -427,8 +427,10 @@ ${seatTableFormat}
                         
                         if (outputContent) {
                             finalTableContent += outputContent;
-                            if (finalTableContent.trim()) {
-                                tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格部分
+                            // 检查内容中是否包含表格标记
+                            const tableMatch = finalTableContent.match(/\|.*\|/);
+                            if (tableMatch) {
+                                tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 只在包含表格时渲染
                             }
                         }
                     } catch (e) {
@@ -441,12 +443,21 @@ ${seatTableFormat}
 
         // 流结束后，检查是否有最终的表格内容
         if (finalTableContent.trim()) {
-            tablePreviewDiv.innerHTML = marked.parse(finalTableContent);
-            localStorage.setItem('arranged_seat_table_markdown', finalTableContent); // 保存编排后的表格
-            // 可以选择隐藏思考过程区域
-            aiThinkingOutputDiv.style.display = 'none';
-            // 应用性别着色
-            applyGenderColoring();
+            // 提取表格内容
+            const tableMatch = finalTableContent.match(/(\|.*\|[\s]*)+/);
+            if (tableMatch) {
+                const tableContent = tableMatch[0];
+                tablePreviewDiv.innerHTML = marked.parse(tableContent);
+                localStorage.setItem('arranged_seat_table_markdown', tableContent); // 保存编排后的表格
+                // 可以选择隐藏思考过程区域
+                aiThinkingOutputDiv.style.display = 'none';
+                // 应用性别着色
+                applyGenderColoring();
+            } else {
+                tablePreviewDiv.innerHTML = '<p>AI 未能按预期格式返回编排好的座位表。</p>';
+                console.error('未能从 AI 响应中提取编排好的座位表:', finalTableContent);
+                aiThinkingOutputDiv.style.display = 'block'; // 保留思考过程以供调试
+            }
         } else {
             tablePreviewDiv.innerHTML = '<p>AI 未能按预期格式返回编排好的座位表。</p>';
             console.error('未能从 AI 响应中提取编排好的座位表:', accumulatedContent);

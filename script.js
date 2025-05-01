@@ -4,13 +4,27 @@ const personDescriptionInput = document.getElementById('person-description');
 const sendDescriptionButton = document.getElementById('send-description');
 const loadingIndicator = document.getElementById('loading');
 const markdownOutputDiv = document.getElementById('markdown-output');
+const toggleApiKeyButton = document.getElementById('toggle-api-key');
+const apiKeySection = document.getElementById('api-key-section');
+const rowsInput = document.getElementById('rows');
+const colsInput = document.getElementById('cols');
+const deskMatesInput = document.getElementById('desk-mates');
+const generateTableButton = document.getElementById('generate-table');
+const copyTableButton = document.getElementById('copy-table');
+const tablePreviewDiv = document.getElementById('table-preview');
 
 let apiKey = localStorage.getItem('deepseek_api_key');
 let conversationHistory = [];
+let personnelTableMarkdown = localStorage.getItem('personnel_table_markdown') || '';
 
 // 加载时填充已保存的 API 密钥
 if (apiKey) {
     apiKeyInput.value = apiKey;
+}
+
+// 加载时显示已保存的人员信息表
+if (personnelTableMarkdown) {
+    markdownOutputDiv.innerHTML = marked.parse(personnelTableMarkdown);
 }
 
 // 保存 API 密钥
@@ -19,10 +33,55 @@ saveKeyButton.addEventListener('click', () => {
     if (apiKey) {
         localStorage.setItem('deepseek_api_key', apiKey);
         alert('API 密钥已保存！');
+        // 保存后自动折叠API密钥板块
+        apiKeySection.classList.add('api-key-collapsed');
+        toggleApiKeyButton.textContent = '展开';
     } else {
         alert('请输入有效的 API 密钥。');
     }
 });
+
+// 折叠/展开 API 密钥板块
+function toggleApiKeySection() {
+    if (apiKeySection.classList.contains('api-key-collapsed')) {
+        apiKeySection.classList.remove('api-key-collapsed');
+        toggleApiKeyButton.textContent = '折叠';
+    } else {
+        apiKeySection.classList.add('api-key-collapsed');
+        toggleApiKeyButton.textContent = '展开';
+    }
+}
+
+// 页面加载时检查是否已保存API密钥，如果已保存则折叠板块
+window.addEventListener('load', () => {
+    if (localStorage.getItem('deepseek_api_key')) {
+        apiKeySection.classList.add('api-key-collapsed');
+        toggleApiKeyButton.textContent = '展开';
+        // 确保内容被隐藏
+        apiKeyInput.style.display = 'none';
+        saveKeyButton.style.display = 'none';
+    }
+    // 确保按钮位置正确
+    const label = apiKeySection.querySelector('label');
+    if (label) {
+        label.appendChild(toggleApiKeyButton);
+    }
+});
+
+// 折叠/展开 API 密钥板块
+function toggleApiKeySection() {
+    if (apiKeySection.classList.contains('api-key-collapsed')) {
+        apiKeySection.classList.remove('api-key-collapsed');
+        toggleApiKeyButton.textContent = '折叠';
+        apiKeyInput.style.display = 'block';
+        saveKeyButton.style.display = 'inline-block';
+    } else {
+        apiKeySection.classList.add('api-key-collapsed');
+        toggleApiKeyButton.textContent = '展开';
+        apiKeyInput.style.display = 'none';
+        saveKeyButton.style.display = 'none';
+    }
+}
 
 // 发送描述给 AI
 sendDescriptionButton.addEventListener('click', async () => {
@@ -57,7 +116,7 @@ markdown表格规范如下：
 
 | 人物 | 性别 | 备注 |
 | --- | --- | --- |
-| 张三 | 男 | 性格开朗 |
+| 张三 | 男 | 性格开朗，擅长前端开发 |
 | 李四 | 女 | 工作认真 |
 
 具体操作步骤如下：
@@ -73,12 +132,18 @@ markdown表格规范如下：
         conversationHistory.push({ role: 'system', content: systemPrompt });
     }
 
-    // 添加用户的新描述
-    conversationHistory.push({ role: 'user', content: `<人物描述>
+// 添加用户的新描述
+    const userMessage = { role: 'user', content: `<人物描述>
 ${description}
-</人物描述>` });
+</人物描述>` };
+    conversationHistory.push(userMessage);
+    // 存储用户描述到本地存储
+    let storedDescriptions = JSON.parse(localStorage.getItem('user_descriptions') || '[]');
+    storedDescriptions.push(description);
+    localStorage.setItem('user_descriptions', JSON.stringify(storedDescriptions));
 
     try {
+        // 使用fetch API直接调用DeepSeek API，确保在前端处理CORS
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -86,7 +151,7 @@ ${description}
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: 'deepseek-chat', // 或者其他 DeepSeek 模型
+                model: 'deepseek-chat',
                 messages: conversationHistory,
                 stream: true,
                 temperature: 0.35
@@ -123,14 +188,9 @@ ${description}
                             accumulatedContent += delta;
                             fullResponse += delta; // 记录完整响应用于下次对话
                             // 尝试提取 <output_table> 中的内容并实时渲染
-                            const tableMatch = accumulatedContent.match(/<output_table>([sS]*?)</output_table>/);
+                            const tableMatch = accumulatedContent.match(/<output_table>([\s\S]*?)<\/output_table>/);
                             if (tableMatch && tableMatch[1]) {
                                 markdownOutputDiv.innerHTML = marked.parse(tableMatch[1].trim());
-                            } else {
-                                // 如果没有匹配到完整的 table 标签，可以显示原始累积内容或部分匹配
-                                // 为避免渲染不完整的 Markdown，这里暂时只在匹配到完整标签时更新
-                                // 或者，可以尝试更复杂的逻辑来处理流式 Markdown
-                                // markdownOutputDiv.textContent = accumulatedContent; // 显示原始文本流
                             }
                         }
                     } catch (e) {
@@ -141,19 +201,22 @@ ${description}
         }
 
         // 流结束后，确保最终的 Markdown 被渲染
-        const finalTableMatch = accumulatedContent.match(/<output_table>([sS]*?)</output_table>/);
+        const finalTableMatch = accumulatedContent.match(/<output_table>([\s\S]*?)<\/output_table>/);
         if (finalTableMatch && finalTableMatch[1]) {
-            markdownOutputDiv.innerHTML = marked.parse(finalTableMatch[1].trim());
+            const finalMarkdown = finalTableMatch[1].trim();
+            markdownOutputDiv.innerHTML = marked.parse(finalMarkdown);
+            // 将最终的Markdown表格存储到本地存储
+            localStorage.setItem('personnel_table_markdown', finalMarkdown);
             // 将 AI 的完整响应（包括标签）添加到历史记录中
             conversationHistory.push({ role: 'assistant', content: accumulatedContent });
         } else {
             // 如果最终没有有效的表格输出
             markdownOutputDiv.innerHTML = '<p>AI 未能按预期格式返回表格。</p>';
             console.error('未能从 AI 响应中提取表格:', accumulatedContent);
-             // 移除最后一次无效的用户输入和可能的系统提示（如果是第一次）
+            // 移除最后一次无效的用户输入和可能的系统提示（如果是第一次）
             conversationHistory.pop(); // 移除 user message
             if(conversationHistory.length > 0 && conversationHistory[conversationHistory.length-1].role === 'system') {
-                 conversationHistory.pop(); // 移除 system prompt if it was the only other message
+                conversationHistory.pop(); // 移除 system prompt if it was the only other message
             }
         }
 
@@ -162,12 +225,107 @@ ${description}
         markdownOutputDiv.innerHTML = `<p style="color: red;">发生错误: ${error.message}</p>`;
         // 出错时，也移除最后一次用户输入，避免影响下次请求
         conversationHistory.pop();
-         if(conversationHistory.length > 0 && conversationHistory[conversationHistory.length-1].role === 'system') {
-             conversationHistory.pop();
+        if(conversationHistory.length > 0 && conversationHistory[conversationHistory.length-1].role === 'system') {
+            conversationHistory.pop();
         }
     } finally {
         loadingIndicator.style.display = 'none';
         sendDescriptionButton.disabled = false;
-        personDescriptionInput.value = ''; // 清空输入框
+        // 不要清空输入框，保留用户输入
+    }
+});
+
+// 生成座位列表表格
+generateTableButton.addEventListener('click', () => {
+    const rows = parseInt(rowsInput.value);
+    const cols = parseInt(colsInput.value);
+    const deskMates = parseInt(deskMatesInput.value);
+    
+    if (rows < 1 || cols < 1 || deskMates < 1) {
+        alert('行数、列数和同桌数必须大于0。');
+        return;
+    }
+    
+    if (deskMates > cols) {
+        alert('同桌数不能大于列数。');
+        return;
+    }
+
+    let markdownTable = '';
+    let seatCounter = 1;
+    const totalSeats = rows * cols;
+    const groupSize = deskMates; // 每组同桌数
+    const groupsPerRow = Math.floor(cols / groupSize); // 每行能容纳的同桌组数
+    const remainderSeats = cols % groupSize; // 余数座位
+    
+    // 生成表头
+    let header = '|';
+    let separator = '|';
+    for (let g = 0; g < groupsPerRow; g++) {
+        for (let s = 0; s < groupSize; s++) {
+            header += ` 座位 |`;
+            separator += ` --- |`;
+        }
+        if (g < groupsPerRow - 1 || remainderSeats > 0) {
+            header += ` 走廊 |`;
+            separator += ` --- |`;
+        }
+    }
+    if (remainderSeats > 0) {
+        for (let s = 0; s < remainderSeats; s++) {
+            header += ` 座位 |`;
+            separator += ` --- |`;
+        }
+    }
+    markdownTable += header + '\n';
+    markdownTable += separator + '\n';
+    
+    // 生成座位数据行
+    for (let r = 0; r < rows; r++) {
+        let rowMarkdown = '|';
+        for (let g = 0; g < groupsPerRow; g++) {
+            for (let s = 0; s < groupSize; s++) {
+                const seatIndex = r * cols + g * groupSize + s + 1;
+                if (seatIndex <= totalSeats) {
+                    rowMarkdown += ` 座位${seatIndex} |`;
+                } else {
+                    rowMarkdown += `  |`;
+                }
+            }
+            if (g < groupsPerRow - 1 || remainderSeats > 0) {
+                rowMarkdown += `  |`; // 走廊
+            }
+        }
+        if (remainderSeats > 0) {
+            for (let s = 0; s < remainderSeats; s++) {
+                const seatIndex = r * cols + groupsPerRow * groupSize + s + 1;
+                if (seatIndex <= totalSeats) {
+                    rowMarkdown += ` 座位${seatIndex} |`;
+                } else {
+                    rowMarkdown += `  |`;
+                }
+            }
+        }
+        markdownTable += rowMarkdown + '\n';
+    }
+    
+    tablePreviewDiv.innerHTML = marked.parse(markdownTable);
+    localStorage.setItem('seat_table_markdown', markdownTable);
+    
+    // 更新总人数显示
+    document.getElementById('total-seats').textContent = `总人数: ${totalSeats}`;
+});
+
+// 复制座位列表表格
+copyTableButton.addEventListener('click', () => {
+    const markdownTable = localStorage.getItem('seat_table_markdown') || '';
+    if (markdownTable) {
+        navigator.clipboard.writeText(markdownTable).then(() => {
+            alert('表格已复制到剪贴板！');
+        }, () => {
+            alert('复制失败，请手动复制表格内容。');
+        });
+    } else {
+        alert('请先生成表格。');
     }
 });

@@ -345,7 +345,6 @@ aiArrangeButton.addEventListener('click', async () => {
     aiThinkingPre.textContent = ''; // 清空旧的思考过程
     tablePreviewDiv.innerHTML = '<p>AI 正在编排座位...</p>'; // 提示用户
     aiArrangeButton.disabled = true;
-    console.log('准备向 AI 发送请求...'); // 调试信息
 
     const systemPrompt = `
 你的任务是根据提供的人物表和备注内容，为人物编排教室的座位，并按照座位表格式输出编排好的座位信息。
@@ -424,14 +423,12 @@ ${seatTableFormat}
                             }
                             if (inThinkingBlock && accumulatedContent.includes('</think>')) {
                                 inThinkingBlock = false;
-                            // 提取完整的思考内容
-                            const thinkMatch = accumulatedContent.match(/<think>([\s\S]*?)<\/think>/i);
-                            if (thinkMatch && thinkMatch[1]) {
-                                thinkingContent = thinkMatch[1].trim();
-                                aiThinkingPre.textContent = thinkingContent;
-                                // 折叠思考过程区域，可以添加一个折叠按钮或直接隐藏
-                                // aiThinkingOutputDiv.style.display = 'none'; // 或者添加折叠样式
-                            }
+                                // 提取完整的思考内容
+                                const thinkMatch = accumulatedContent.match(/<think>([\s\S]*?)<\/think>/i);
+                                if (thinkMatch && thinkMatch[1]) {
+                                    thinkingContent = thinkMatch[1].trim();
+                                    aiThinkingPre.textContent = thinkingContent;
+                                }
                                 // 提取思考块之后的内容作为可能的表格开头
                                 const contentAfterThink = accumulatedContent.substring(accumulatedContent.indexOf('</think>') + 8);
                                 finalTableContent = contentAfterThink; // 开始累积表格内容

@@ -36,367 +36,10 @@ saveKeyButton.addEventListener('click', () => {
         // 保存后自动折叠API密钥板块
         apiKeySection.classList.add('api-key-collapsed');
         toggleApiKeyButton.textContent = '展开';
-    } else {
-        alert('请输入有效的 API 密钥。');
-    }
-});
-
-// AI 智能编排座位
-const aiArrangeButton = document.getElementById('ai-arrange-button');
-const arrangementRemarksInput = document.getElementById('arrangement-remarks');
-const aiThinkingOutputDiv = document.getElementById('ai-thinking-output');
-const aiThinkingPre = aiThinkingOutputDiv.querySelector('pre');
-
-aiArrangeButton.addEventListener('click', async () => {
-    apiKey = apiKeyInput.value.trim(); // 确保使用最新的密钥
-    const remarks = arrangementRemarksInput.value.trim();
-    const personnelTable = localStorage.getItem('personnel_table_markdown') || markdownOutputDiv.innerText; // 从localStorage或DOM获取
-    const seatTableFormat = localStorage.getItem('seat_table_markdown') || tablePreviewDiv.innerText; // 从localStorage或DOM获取
-
-    if (!apiKey) {
-        alert('请先输入并保存您的 DeepSeek API 密钥。');
-        return;
-    }
-
-    if (!personnelTable || personnelTable.trim() === '') {
-        alert('请先生成人员信息表。');
-        return;
-    }
-
-    if (!seatTableFormat || seatTableFormat.trim() === '') {
-        alert('请先生成座位列表。');
-        return;
-    }
-
-    aiThinkingOutputDiv.style.display = 'block';
-    aiThinkingPre.textContent = ''; // 清空旧的思考过程
-    tablePreviewDiv.innerHTML = '<p>AI 正在编排座位...</p>'; // 提示用户
-    aiArrangeButton.disabled = true;
-
-    const systemPrompt = `
-你的任务是根据提供的人物表和备注内容，为人物编排教室的座位，并按照座位表格式输出编排好的座位信息。
-以下是参与座位编排的人物信息：
-<人物表>
-${personnelTable}
-</人物表>
-编排座位时需要考虑的备注信息如下：
-<备注>
-${remarks}
-</备注>
-在编排座位时，请遵循以下原则：
-- 保持编排合理，表格靠上的是前排，挨在一起的是同桌。
-- 要综合考虑人物表和备注的内容来安排座位。
-
-以下是座位表格式，你需要将表格中“座位一，座位二…”的信息替换为人物表中的人物，不修改表格其他内容：
-<座位表格式>
-${seatTableFormat}
-</座位表格式>
-
-请在<编排好的座位表>标签内输出修改后的表格。
-`;
-
-    try {
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'deepseek-reasoner',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: '请根据我提供的信息开始编排座位。' } // 简单的用户触发消息
-                ],
-                stream: true
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`API 请求失败: ${response.status} ${response.statusText} - ${errorData.error?.message || '未知错误'}`);
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let accumulatedContent = '';
-        let thinkingContent = '';
-        let inThinkingBlock = false;
-        let finalTableContent = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const jsonData = line.substring(6).trim();
-                    if (jsonData === '[DONE]') {
-                        break;
-                    }
-                    try {
-                        const parsedData = JSON.parse(jsonData);
-                        const delta = parsedData.choices[0]?.delta?.content;
-                        if (delta) {
-                            accumulatedContent += delta;
-
-                            // 检查是否进入或退出 <think> 块
-                            if (accumulatedContent.includes('<think>') && !inThinkingBlock) {
-                                inThinkingBlock = true;
-                                thinkingContent = ''; // 重置思考内容
-                            }
-                            if (inThinkingBlock && accumulatedContent.includes('</think>')) {
-                                inThinkingBlock = false;
-                                // 提取完整的思考内容
-                                const thinkMatch = accumulatedContent.match(/<think>([sS]*?)</think>/);
-                                if (thinkMatch && thinkMatch[1]) {
-                                    thinkingContent = thinkMatch[1].trim();
-                                    aiThinkingPre.textContent = thinkingContent;
-                                    // 折叠思考过程区域，可以添加一个折叠按钮或直接隐藏
-                                    // aiThinkingOutputDiv.style.display = 'none'; // 或者添加折叠样式
-                                }
-                                // 提取思考块之后的内容作为可能的表格开头
-                                const contentAfterThink = accumulatedContent.substring(accumulatedContent.indexOf('</think>') + 8);
-                                finalTableContent = contentAfterThink; // 开始累积表格内容
-                                tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格部分
-                            } else if (inThinkingBlock) {
-                                // 在 <think> 块内，实时更新思考过程
-                                const currentThinkMatch = accumulatedContent.match(/<think>([sS]*)/);
-                                if (currentThinkMatch && currentThinkMatch[1]) {
-                                    aiThinkingPre.textContent = currentThinkMatch[1];
-                                }
-                            } else if (!inThinkingBlock && accumulatedContent.includes('</think>')) {
-                                // 如果在 </think> 之后接收到内容，累加到表格内容
-                                finalTableContent += delta;
-                                tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时更新表格
-                            }
-                        }
-                    } catch (e) {
-                        console.error('解析 SSE 数据块时出错:', e, '数据块:', jsonData);
-                    }
-                }
-            }
-             if (jsonData === '[DONE]') break; // 跳出内层循环后再次检查
-        }
-
-        // 流结束后，提取最终的表格
-        const finalTableMatch = accumulatedContent.match(/<编排好的座位表>([sS]*?)</编排好的座位表>/);
-        if (finalTableMatch && finalTableMatch[1]) {
-            const finalMarkdown = finalTableMatch[1].trim();
-            tablePreviewDiv.innerHTML = marked.parse(finalMarkdown);
-            localStorage.setItem('arranged_seat_table_markdown', finalMarkdown); // 保存编排后的表格
-            // 可以选择隐藏思考过程区域
-             aiThinkingOutputDiv.style.display = 'none';
-        } else {
-            tablePreviewDiv.innerHTML = '<p>AI 未能按预期格式返回编排好的座位表。</p>';
-            console.error('未能从 AI 响应中提取编排好的座位表:', accumulatedContent);
-             aiThinkingOutputDiv.style.display = 'block'; // 保留思考过程以供调试
-        }
-
-    } catch (error) {
-        console.error('调用 DeepSeek API 进行座位编排时出错:', error);
-        tablePreviewDiv.innerHTML = `<p style="color: red;">座位编排失败: ${error.message}</p>`;
-        // 显示错误信息和可能的思考过程
-        aiThinkingPre.textContent += `\n\n错误: ${error.message}`;
-        aiThinkingOutputDiv.style.display = 'block'; // 确保错误时思考过程可见
-    } finally {
-        aiArrangeButton.disabled = false;
-    }
-});
-
-// 折叠/展开 API 密钥板块
-function toggleApiKeySection() {
-    if (apiKeySection.classList.contains('api-key-collapsed')) {
-        apiKeySection.classList.remove('api-key-collapsed');
-        toggleApiKeyButton.textContent = '折叠';
-    } else {
-        apiKeySection.classList.add('api-key-collapsed');
-        toggleApiKeyButton.textContent = '展开';
-    }
-}
-
-// 页面加载时检查是否已保存API密钥，如果已保存则折叠板块
-window.addEventListener('load', () => {
-    if (localStorage.getItem('deepseek_api_key')) {
-        apiKeySection.classList.add('api-key-collapsed');
-        toggleApiKeyButton.textContent = '展开';
-        // 确保内容被隐藏
         apiKeyInput.style.display = 'none';
         saveKeyButton.style.display = 'none';
-    }
-    // 确保按钮位置正确
-    const label = apiKeySection.querySelector('label');
-    if (label) {
-        label.appendChild(toggleApiKeyButton);
-    }
-});
-
-// AI 智能编排座位
-const aiArrangeButton = document.getElementById('ai-arrange-button');
-const arrangementRemarksInput = document.getElementById('arrangement-remarks');
-const aiThinkingOutputDiv = document.getElementById('ai-thinking-output');
-const aiThinkingPre = aiThinkingOutputDiv.querySelector('pre');
-
-aiArrangeButton.addEventListener('click', async () => {
-    apiKey = apiKeyInput.value.trim(); // 确保使用最新的密钥
-    const remarks = arrangementRemarksInput.value.trim();
-    const personnelTable = localStorage.getItem('personnel_table_markdown') || markdownOutputDiv.innerText; // 从localStorage或DOM获取
-    const seatTableFormat = localStorage.getItem('seat_table_markdown') || tablePreviewDiv.innerText; // 从localStorage或DOM获取
-
-    if (!apiKey) {
-        alert('请先输入并保存您的 DeepSeek API 密钥。');
-        return;
-    }
-
-    if (!personnelTable || personnelTable.trim() === '') {
-        alert('请先生成人员信息表。');
-        return;
-    }
-
-    if (!seatTableFormat || seatTableFormat.trim() === '') {
-        alert('请先生成座位列表。');
-        return;
-    }
-
-    aiThinkingOutputDiv.style.display = 'block';
-    aiThinkingPre.textContent = ''; // 清空旧的思考过程
-    tablePreviewDiv.innerHTML = '<p>AI 正在编排座位...</p>'; // 提示用户
-    aiArrangeButton.disabled = true;
-
-    const systemPrompt = `
-你的任务是根据提供的人物表和备注内容，为人物编排教室的座位，并按照座位表格式输出编排好的座位信息。
-以下是参与座位编排的人物信息：
-<人物表>
-${personnelTable}
-</人物表>
-编排座位时需要考虑的备注信息如下：
-<备注>
-${remarks}
-</备注>
-在编排座位时，请遵循以下原则：
-- 保持编排合理，表格靠上的是前排，挨在一起的是同桌。
-- 要综合考虑人物表和备注的内容来安排座位。
-
-以下是座位表格式，你需要将表格中“座位一，座位二…”的信息替换为人物表中的人物，不修改表格其他内容：
-<座位表格式>
-${seatTableFormat}
-</座位表格式>
-
-请在<编排好的座位表>标签内输出修改后的表格。
-`;
-
-    try {
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'deepseek-reasoner',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: '请根据我提供的信息开始编排座位。' } // 简单的用户触发消息
-                ],
-                stream: true
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`API 请求失败: ${response.status} ${response.statusText} - ${errorData.error?.message || '未知错误'}`);
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let accumulatedContent = '';
-        let thinkingContent = '';
-        let inThinkingBlock = false;
-        let finalTableContent = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const jsonData = line.substring(6).trim();
-                    if (jsonData === '[DONE]') {
-                        break;
-                    }
-                    try {
-                        const parsedData = JSON.parse(jsonData);
-                        const delta = parsedData.choices[0]?.delta?.content;
-                        if (delta) {
-                            accumulatedContent += delta;
-
-                            // 检查是否进入或退出 <think> 块
-                            if (accumulatedContent.includes('<think>') && !inThinkingBlock) {
-                                inThinkingBlock = true;
-                                thinkingContent = ''; // 重置思考内容
-                            }
-                            if (inThinkingBlock && accumulatedContent.includes('</think>')) {
-                                inThinkingBlock = false;
-                                // 提取完整的思考内容
-                                const thinkMatch = accumulatedContent.match(/<think>([sS]*?)</think>/);
-                                if (thinkMatch && thinkMatch[1]) {
-                                    thinkingContent = thinkMatch[1].trim();
-                                    aiThinkingPre.textContent = thinkingContent;
-                                    // 折叠思考过程区域，可以添加一个折叠按钮或直接隐藏
-                                    // aiThinkingOutputDiv.style.display = 'none'; // 或者添加折叠样式
-                                }
-                                // 提取思考块之后的内容作为可能的表格开头
-                                const contentAfterThink = accumulatedContent.substring(accumulatedContent.indexOf('</think>') + 8);
-                                finalTableContent = contentAfterThink; // 开始累积表格内容
-                                tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格部分
-                            } else if (inThinkingBlock) {
-                                // 在 <think> 块内，实时更新思考过程
-                                const currentThinkMatch = accumulatedContent.match(/<think>([sS]*)/);
-                                if (currentThinkMatch && currentThinkMatch[1]) {
-                                    aiThinkingPre.textContent = currentThinkMatch[1];
-                                }
-                            } else if (!inThinkingBlock && accumulatedContent.includes('</think>')) {
-                                // 如果在 </think> 之后接收到内容，累加到表格内容
-                                finalTableContent += delta;
-                                tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时更新表格
-                            }
-                        }
-                    } catch (e) {
-                        console.error('解析 SSE 数据块时出错:', e, '数据块:', jsonData);
-                    }
-                }
-            }
-             if (jsonData === '[DONE]') break; // 跳出内层循环后再次检查
-        }
-
-        // 流结束后，提取最终的表格
-        const finalTableMatch = accumulatedContent.match(/<编排好的座位表>([sS]*?)</编排好的座位表>/);
-        if (finalTableMatch && finalTableMatch[1]) {
-            const finalMarkdown = finalTableMatch[1].trim();
-            tablePreviewDiv.innerHTML = marked.parse(finalMarkdown);
-            localStorage.setItem('arranged_seat_table_markdown', finalMarkdown); // 保存编排后的表格
-            // 可以选择隐藏思考过程区域
-             aiThinkingOutputDiv.style.display = 'none';
-        } else {
-            tablePreviewDiv.innerHTML = '<p>AI 未能按预期格式返回编排好的座位表。</p>';
-            console.error('未能从 AI 响应中提取编排好的座位表:', accumulatedContent);
-             aiThinkingOutputDiv.style.display = 'block'; // 保留思考过程以供调试
-        }
-
-    } catch (error) {
-        console.error('调用 DeepSeek API 进行座位编排时出错:', error);
-        tablePreviewDiv.innerHTML = `<p style="color: red;">座位编排失败: ${error.message}</p>`;
-        // 显示错误信息和可能的思考过程
-        aiThinkingPre.textContent += `\n\n错误: ${error.message}`;
-        aiThinkingOutputDiv.style.display = 'block'; // 确保错误时思考过程可见
-    } finally {
-        aiArrangeButton.disabled = false;
+    } else {
+        alert('请输入有效的 API 密钥。');
     }
 });
 
@@ -414,6 +57,23 @@ function toggleApiKeySection() {
         saveKeyButton.style.display = 'none';
     }
 }
+
+// 绑定折叠/展开按钮事件
+toggleApiKeyButton.addEventListener('click', toggleApiKeySection);
+
+// 页面加载时检查是否已保存API密钥，如果已保存则折叠板块
+window.addEventListener('load', () => {
+    if (localStorage.getItem('deepseek_api_key')) {
+        apiKeySection.classList.add('api-key-collapsed');
+        toggleApiKeyButton.textContent = '展开';
+        apiKeyInput.style.display = 'none';
+        saveKeyButton.style.display = 'none';
+    }
+    const label = apiKeySection.querySelector('label');
+    if (label) {
+        label.appendChild(toggleApiKeyButton);
+    }
+});
 
 // 发送描述给 AI
 sendDescriptionButton.addEventListener('click', async () => {
@@ -532,7 +192,7 @@ ${description}
         }
 
         // 流结束后，确保最终的 Markdown 被渲染
-        const finalTableMatch = accumulatedContent.match(/<output_table>([\s\S]*?)<\/output_table>/);
+        const finalTableMatch = accumulatedContent.match(/<output_table>([\s\S]*?)<\/output_table>/i);
         if (finalTableMatch && finalTableMatch[1]) {
             const finalMarkdown = finalTableMatch[1].trim();
             markdownOutputDiv.innerHTML = marked.parse(finalMarkdown);
@@ -566,171 +226,6 @@ ${description}
     }
 });
 
-// AI 智能编排座位
-const aiArrangeButton = document.getElementById('ai-arrange-button');
-const arrangementRemarksInput = document.getElementById('arrangement-remarks');
-const aiThinkingOutputDiv = document.getElementById('ai-thinking-output');
-const aiThinkingPre = aiThinkingOutputDiv.querySelector('pre');
-
-aiArrangeButton.addEventListener('click', async () => {
-    apiKey = apiKeyInput.value.trim(); // 确保使用最新的密钥
-    const remarks = arrangementRemarksInput.value.trim();
-    const personnelTable = localStorage.getItem('personnel_table_markdown') || markdownOutputDiv.innerText; // 从localStorage或DOM获取
-    const seatTableFormat = localStorage.getItem('seat_table_markdown') || tablePreviewDiv.innerText; // 从localStorage或DOM获取
-
-    if (!apiKey) {
-        alert('请先输入并保存您的 DeepSeek API 密钥。');
-        return;
-    }
-
-    if (!personnelTable || personnelTable.trim() === '') {
-        alert('请先生成人员信息表。');
-        return;
-    }
-
-    if (!seatTableFormat || seatTableFormat.trim() === '') {
-        alert('请先生成座位列表。');
-        return;
-    }
-
-    aiThinkingOutputDiv.style.display = 'block';
-    aiThinkingPre.textContent = ''; // 清空旧的思考过程
-    tablePreviewDiv.innerHTML = '<p>AI 正在编排座位...</p>'; // 提示用户
-    aiArrangeButton.disabled = true;
-
-    const systemPrompt = `
-你的任务是根据提供的人物表和备注内容，为人物编排教室的座位，并按照座位表格式输出编排好的座位信息。
-以下是参与座位编排的人物信息：
-<人物表>
-${personnelTable}
-</人物表>
-编排座位时需要考虑的备注信息如下：
-<备注>
-${remarks}
-</备注>
-在编排座位时，请遵循以下原则：
-- 保持编排合理，表格靠上的是前排，挨在一起的是同桌。
-- 要综合考虑人物表和备注的内容来安排座位。
-
-以下是座位表格式，你需要将表格中“座位一，座位二…”的信息替换为人物表中的人物，不修改表格其他内容：
-<座位表格式>
-${seatTableFormat}
-</座位表格式>
-
-请在<编排好的座位表>标签内输出修改后的表格。
-`;
-
-    try {
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'deepseek-reasoner',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: '请根据我提供的信息开始编排座位。' } // 简单的用户触发消息
-                ],
-                stream: true
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`API 请求失败: ${response.status} ${response.statusText} - ${errorData.error?.message || '未知错误'}`);
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let accumulatedContent = '';
-        let thinkingContent = '';
-        let inThinkingBlock = false;
-        let finalTableContent = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const jsonData = line.substring(6).trim();
-                    if (jsonData === '[DONE]') {
-                        break;
-                    }
-                    try {
-                        const parsedData = JSON.parse(jsonData);
-                        const delta = parsedData.choices[0]?.delta?.content;
-                        if (delta) {
-                            accumulatedContent += delta;
-
-                            // 检查是否进入或退出 <think> 块
-                            if (accumulatedContent.includes('<think>') && !inThinkingBlock) {
-                                inThinkingBlock = true;
-                                thinkingContent = ''; // 重置思考内容
-                            }
-                            if (inThinkingBlock && accumulatedContent.includes('</think>')) {
-                                inThinkingBlock = false;
-                                // 提取完整的思考内容
-                                const thinkMatch = accumulatedContent.match(/<think>([sS]*?)</think>/);
-                                if (thinkMatch && thinkMatch[1]) {
-                                    thinkingContent = thinkMatch[1].trim();
-                                    aiThinkingPre.textContent = thinkingContent;
-                                    // 折叠思考过程区域，可以添加一个折叠按钮或直接隐藏
-                                    // aiThinkingOutputDiv.style.display = 'none'; // 或者添加折叠样式
-                                }
-                                // 提取思考块之后的内容作为可能的表格开头
-                                const contentAfterThink = accumulatedContent.substring(accumulatedContent.indexOf('</think>') + 8);
-                                finalTableContent = contentAfterThink; // 开始累积表格内容
-                                tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格部分
-                            } else if (inThinkingBlock) {
-                                // 在 <think> 块内，实时更新思考过程
-                                const currentThinkMatch = accumulatedContent.match(/<think>([sS]*)/);
-                                if (currentThinkMatch && currentThinkMatch[1]) {
-                                    aiThinkingPre.textContent = currentThinkMatch[1];
-                                }
-                            } else if (!inThinkingBlock && accumulatedContent.includes('</think>')) {
-                                // 如果在 </think> 之后接收到内容，累加到表格内容
-                                finalTableContent += delta;
-                                tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时更新表格
-                            }
-                        }
-                    } catch (e) {
-                        console.error('解析 SSE 数据块时出错:', e, '数据块:', jsonData);
-                    }
-                }
-            }
-             if (jsonData === '[DONE]') break; // 跳出内层循环后再次检查
-        }
-
-        // 流结束后，提取最终的表格
-        const finalTableMatch = accumulatedContent.match(/<编排好的座位表>([sS]*?)</编排好的座位表>/);
-        if (finalTableMatch && finalTableMatch[1]) {
-            const finalMarkdown = finalTableMatch[1].trim();
-            tablePreviewDiv.innerHTML = marked.parse(finalMarkdown);
-            localStorage.setItem('arranged_seat_table_markdown', finalMarkdown); // 保存编排后的表格
-            // 可以选择隐藏思考过程区域
-             aiThinkingOutputDiv.style.display = 'none';
-        } else {
-            tablePreviewDiv.innerHTML = '<p>AI 未能按预期格式返回编排好的座位表。</p>';
-            console.error('未能从 AI 响应中提取编排好的座位表:', accumulatedContent);
-             aiThinkingOutputDiv.style.display = 'block'; // 保留思考过程以供调试
-        }
-
-    } catch (error) {
-        console.error('调用 DeepSeek API 进行座位编排时出错:', error);
-        tablePreviewDiv.innerHTML = `<p style="color: red;">座位编排失败: ${error.message}</p>`;
-        // 显示错误信息和可能的思考过程
-        aiThinkingPre.textContent += `\n\n错误: ${error.message}`;
-        aiThinkingOutputDiv.style.display = 'block'; // 确保错误时思考过程可见
-    } finally {
-        aiArrangeButton.disabled = false;
-    }
-});
 
 // 生成座位列表表格
 generateTableButton.addEventListener('click', () => {
@@ -810,20 +305,11 @@ generateTableButton.addEventListener('click', () => {
     localStorage.setItem('seat_table_markdown', markdownTable);
     
     // 更新总人数显示
-    document.getElementById('total-seats').textContent = `总人数: ${totalSeats}`;
-});
-
-// 复制座位列表表格
-copyTableButton.addEventListener('click', () => {
-    const markdownTable = localStorage.getItem('seat_table_markdown') || '';
-    if (markdownTable) {
-        navigator.clipboard.writeText(markdownTable).then(() => {
-            alert('表格已复制到剪贴板！');
-        }, () => {
-            alert('复制失败，请手动复制表格内容。');
-        });
+    const totalSeatsElement = document.getElementById('total-seats');
+    if (totalSeatsElement) {
+        totalSeatsElement.textContent = `总人数: ${totalSeats}`;
     } else {
-        alert('请先生成表格。');
+        console.warn('total-seats 元素未找到，无法更新总人数显示。');
     }
 });
 
@@ -936,21 +422,21 @@ ${seatTableFormat}
                             }
                             if (inThinkingBlock && accumulatedContent.includes('</think>')) {
                                 inThinkingBlock = false;
-                                // 提取完整的思考内容
-                                const thinkMatch = accumulatedContent.match(/<think>([sS]*?)</think>/);
-                                if (thinkMatch && thinkMatch[1]) {
-                                    thinkingContent = thinkMatch[1].trim();
-                                    aiThinkingPre.textContent = thinkingContent;
-                                    // 折叠思考过程区域，可以添加一个折叠按钮或直接隐藏
-                                    // aiThinkingOutputDiv.style.display = 'none'; // 或者添加折叠样式
-                                }
+                            // 提取完整的思考内容
+                            const thinkMatch = accumulatedContent.match(/<think>([\s\S]*?)<\/think>/i);
+                            if (thinkMatch && thinkMatch[1]) {
+                                thinkingContent = thinkMatch[1].trim();
+                                aiThinkingPre.textContent = thinkingContent;
+                                // 折叠思考过程区域，可以添加一个折叠按钮或直接隐藏
+                                // aiThinkingOutputDiv.style.display = 'none'; // 或者添加折叠样式
+                            }
                                 // 提取思考块之后的内容作为可能的表格开头
                                 const contentAfterThink = accumulatedContent.substring(accumulatedContent.indexOf('</think>') + 8);
                                 finalTableContent = contentAfterThink; // 开始累积表格内容
                                 tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格部分
                             } else if (inThinkingBlock) {
                                 // 在 <think> 块内，实时更新思考过程
-                                const currentThinkMatch = accumulatedContent.match(/<think>([sS]*)/);
+                                const currentThinkMatch = accumulatedContent.match(/<think>([\s\S]*)/i);
                                 if (currentThinkMatch && currentThinkMatch[1]) {
                                     aiThinkingPre.textContent = currentThinkMatch[1];
                                 }
@@ -969,17 +455,17 @@ ${seatTableFormat}
         }
 
         // 流结束后，提取最终的表格
-        const finalTableMatch = accumulatedContent.match(/<编排好的座位表>([sS]*?)</编排好的座位表>/);
+        const finalTableMatch = accumulatedContent.match(/<编排好的座位表>([\s\S]*?)<\/编排好的座位表>/i);
         if (finalTableMatch && finalTableMatch[1]) {
             const finalMarkdown = finalTableMatch[1].trim();
             tablePreviewDiv.innerHTML = marked.parse(finalMarkdown);
             localStorage.setItem('arranged_seat_table_markdown', finalMarkdown); // 保存编排后的表格
             // 可以选择隐藏思考过程区域
-             aiThinkingOutputDiv.style.display = 'none';
+            aiThinkingOutputDiv.style.display = 'none';
         } else {
             tablePreviewDiv.innerHTML = '<p>AI 未能按预期格式返回编排好的座位表。</p>';
             console.error('未能从 AI 响应中提取编排好的座位表:', accumulatedContent);
-             aiThinkingOutputDiv.style.display = 'block'; // 保留思考过程以供调试
+            aiThinkingOutputDiv.style.display = 'block'; // 保留思考过程以供调试
         }
 
     } catch (error) {
@@ -990,5 +476,19 @@ ${seatTableFormat}
         aiThinkingOutputDiv.style.display = 'block'; // 确保错误时思考过程可见
     } finally {
         aiArrangeButton.disabled = false;
+    }
+});
+
+// 复制座位列表表格
+copyTableButton.addEventListener('click', () => {
+    const markdownTable = localStorage.getItem('seat_table_markdown') || '';
+    if (markdownTable) {
+        navigator.clipboard.writeText(markdownTable).then(() => {
+            alert('表格已复制到剪贴板！');
+        }, () => {
+            alert('复制失败，请手动复制表格内容。');
+        });
+    } else {
+        alert('请先生成表格。');
     }
 });

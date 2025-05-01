@@ -319,6 +319,7 @@ const arrangementRemarksInput = document.getElementById('arrangement-remarks');
 const aiThinkingOutputDiv = document.getElementById('ai-thinking-output');
 const aiThinkingPre = aiThinkingOutputDiv.querySelector('pre');
 
+// AI 智能编排座位
 aiArrangeButton.addEventListener('click', async () => {
     apiKey = apiKeyInput.value.trim(); // 确保使用最新的密钥
     const remarks = arrangementRemarksInput.value.trim();
@@ -344,6 +345,7 @@ aiArrangeButton.addEventListener('click', async () => {
     aiThinkingPre.textContent = ''; // 清空旧的思考过程
     tablePreviewDiv.innerHTML = '<p>AI 正在编排座位...</p>'; // 提示用户
     aiArrangeButton.disabled = true;
+    console.log('准备向 AI 发送请求...'); // 调试信息
 
     const systemPrompt = `
 你的任务是根据提供的人物表和备注内容，为人物编排教室的座位，并按照座位表格式输出编排好的座位信息。

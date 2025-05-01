@@ -189,11 +189,8 @@ ${description}
                         if (delta) {
                             accumulatedContent += delta;
                             fullResponse += delta; // 记录完整响应用于下次对话
-                            // 尝试提取 <output_table> 中的内容并实时渲染
-                            const tableMatch = accumulatedContent.match(/<output_table>([\s\S]*?)<\/output_table>/);
-                            if (tableMatch && tableMatch[1]) {
-                                markdownOutputDiv.innerHTML = marked.parse(tableMatch[1].trim());
-                            }
+                            // 实时渲染流式传输的内容
+                            markdownOutputDiv.innerHTML = marked.parse(accumulatedContent);
                         }
                     } catch (e) {
                         console.error('解析 SSE 数据块时出错:', e, '数据块:', jsonData);

@@ -1,0 +1,121 @@
+body {
+    font-family: sans-serif;
+    background-color: #f8f8f8; /* 浅灰色背景 */
+    color: #333;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+.container {
+    background-color: #ffffff; /* 白色内容区域 */
+    padding: 30px;
+    border-radius: 12px; /* 增加圆角 */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 800px;
+}
+
+h1 {
+    color: #333;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.api-key-section, .input-section, .output-section {
+    margin-bottom: 25px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #555;
+}
+
+input[type="password"],
+textarea {
+    width: calc(100% - 22px); /* 减去 padding 和 border */
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px; /* 增加圆角 */
+    font-size: 1rem;
+    margin-bottom: 15px; /* 增加输入框下方间距 */
+}
+
+textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+button {
+    background-color: #ffd5cb; /* 低饱和度桃红色 */
+    color: #333;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px; /* 增加圆角 */
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #f8baba; /* 悬停时颜色加深一点 */
+}
+
+#send-description {
+    display: block; /* 让按钮独占一行 */
+    width: 100%; /* 宽度占满容器 */
+    margin-top: 15px; /* 在文本域和按钮间增加间距 */
+}
+
+#save-key {
+    margin-left: 10px;
+    background-color: #add8e6; /* 低饱和度蓝色 */
+}
+
+#save-key:hover {
+    background-color: #9bcbe0;
+}
+
+.loading-indicator {
+    text-align: center;
+    padding: 15px;
+    color: #888;
+    font-style: italic;
+}
+
+#markdown-output {
+    border: 1px solid #eee;
+    padding: 15px;
+    border-radius: 8px; /* 增加圆角 */
+    background-color: #fafafa;
+    min-height: 100px;
+    overflow-x: auto; /* 防止表格过宽 */
+}
+
+/* Markdown 表格样式 */
+#markdown-output table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+#markdown-output th,
+#markdown-output td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+#markdown-output th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+#markdown-output tr:nth-child(even) {
+    background-color: #f9f9f9;
+}

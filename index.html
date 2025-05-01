@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepDeskmate</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>DeepDeskmate</h1>
+
+        <div class="api-key-section">
+            <label for="api-key">DeepSeek API 密钥:</label>
+            <input type="password" id="api-key" placeholder="在此输入您的 API 密钥">
+            <button id="save-key">保存密钥</button>
+        </div>
+
+        <div class="input-section">
+            <label for="person-description">输入人物描述:</label>
+            <textarea id="person-description" rows="4" placeholder="例如：张三，男，技术负责人，擅长沟通协调。"></textarea>
+            <button id="send-description">发送给 AI</button>
+        </div>
+
+        <div class="loading-indicator" id="loading" style="display: none;">
+            AI 正在处理中...
+        </div>
+
+        <div class="output-section">
+            <h2>人员信息表</h2>
+            <div id="markdown-output"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> 
+    <script src="script.js"></script>
+</body>
+</html>

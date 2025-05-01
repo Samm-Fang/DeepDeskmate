@@ -419,42 +419,20 @@ ${seatTableFormat}
                         if (delta) {
                             accumulatedContent += delta;
 
-                            // 检查是否进入或退出 <think> 块
-                            if (delta.indexOf('<think>') !== -1 && !inThinkingBlock) {
-                                inThinkingBlock = true;
-                                const startIndex = delta.indexOf('<think>') + 7;
-                                thinkingContent = delta.substring(startIndex) || ''; // 获取 <think> 之后的内容
+                            // 检查是否有 reasoning_content 或 content
+                            const reasoningContent = parsedData.choices[0]?.delta?.reasoning_content;
+                            const outputContent = parsedData.choices[0]?.delta?.content;
+                            
+                            if (reasoningContent) {
+                                thinkingContent += reasoningContent;
                                 aiThinkingPre.textContent = thinkingContent;
                                 aiThinkingOutputDiv.style.display = 'block'; // 确保显示思考过程区域
                             }
-                            if (inThinkingBlock && delta.indexOf('</think>') !== -1) {
-                                inThinkingBlock = false;
-                                const endIndex = delta.indexOf('</think>');
-                                thinkingContent += delta.substring(0, endIndex);
-                                aiThinkingPre.textContent = thinkingContent;
-                                // 提取思考块之后的内容作为可能的表格开头
-                                const contentAfterThink = delta.substring(endIndex + 8) || '';
-                                finalTableContent += contentAfterThink; // 开始累积表格内容
+                            
+                            if (outputContent) {
+                                finalTableContent += outputContent;
                                 if (finalTableContent.trim()) {
                                     tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格部分
-                                }
-                            } else if (inThinkingBlock) {
-                                // 在 <think> 块内，实时更新思考过程
-                                thinkingContent += delta;
-                                aiThinkingPre.textContent = thinkingContent;
-                                aiThinkingOutputDiv.style.display = 'block'; // 确保显示思考过程区域
-                            } else if (!inThinkingBlock && delta.indexOf('</think>') !== -1) {
-                                // 如果在 </think> 之后接收到内容，累加到表格内容
-                                const endIndex = delta.indexOf('</think>');
-                                finalTableContent += delta.substring(endIndex + 8) || '';
-                                if (finalTableContent.trim()) {
-                                    tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格
-                                }
-                            } else if (!inThinkingBlock) {
-                                // 如果不在 <think> 块内，累加到表格内容
-                                finalTableContent += delta;
-                                if (finalTableContent.trim()) {
-                                    tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格
                                 }
                             }
                         }
@@ -466,12 +444,10 @@ ${seatTableFormat}
             if (typeof jsonData !== 'undefined' && jsonData === '[DONE]') break; // 跳出内层循环后再次检查
         }
 
-        // 流结束后，提取最终的表格
-        const finalTableMatch = accumulatedContent.match(/<编排好的座位表>([\s\S]*?)<\/编排好的座位表>/i);
-        if (finalTableMatch && finalTableMatch[1]) {
-            const finalMarkdown = finalTableMatch[1].trim();
-            tablePreviewDiv.innerHTML = marked.parse(finalMarkdown);
-            localStorage.setItem('arranged_seat_table_markdown', finalMarkdown); // 保存编排后的表格
+        // 流结束后，检查是否有最终的表格内容
+        if (finalTableContent.trim()) {
+            tablePreviewDiv.innerHTML = marked.parse(finalTableContent);
+            localStorage.setItem('arranged_seat_table_markdown', finalTableContent); // 保存编排后的表格
             // 可以选择隐藏思考过程区域
             aiThinkingOutputDiv.style.display = 'none';
             // 应用性别着色

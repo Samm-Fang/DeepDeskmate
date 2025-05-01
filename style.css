@@ -148,6 +148,53 @@ button:hover {
     width: 60px;
 }
 
+.arrangement-section {
+    margin-top: 20px; /* 与生成器控件分开 */
+}
+
+.arrangement-section textarea {
+    width: calc(100% - 22px); /* 宽度占满 */
+    margin-bottom: 10px;
+}
+
+#ai-arrange-button {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    background-color: #a2d2ff; /* 不同的按钮颜色 */
+}
+
+#ai-arrange-button:hover {
+    background-color: #8ecae6;
+}
+
+#ai-thinking-output {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e9ecef; /* 浅灰色背景 */
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+}
+
+#ai-thinking-output h3 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+    color: #495057;
+}
+
+#ai-thinking-output pre {
+    white-space: pre-wrap; /* 自动换行 */
+    word-wrap: break-word;
+    max-height: 200px; /* 限制最大高度，可滚动 */
+    overflow-y: auto;
+    background-color: #fff;
+    padding: 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
 .api-key-collapsed .api-key-content {
     display: none;
 }

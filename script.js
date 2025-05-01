@@ -451,7 +451,7 @@ ${seatTableFormat}
                     }
                 }
             }
-             if (jsonData === '[DONE]') break; // 跳出内层循环后再次检查
+            if (typeof jsonData !== 'undefined' && jsonData === '[DONE]') break; // 跳出内层循环后再次检查
         }
 
         // 流结束后，提取最终的表格

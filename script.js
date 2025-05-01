@@ -420,7 +420,8 @@ ${seatTableFormat}
                             // 检查是否进入或退出 <think> 块
                             if (delta.includes('<think>') && !inThinkingBlock) {
                                 inThinkingBlock = true;
-                                thinkingContent = ''; // 重置思考内容
+                                thinkingContent = delta.split('<think>')[1] || ''; // 获取 <think> 之后的内容
+                                aiThinkingPre.textContent = thinkingContent;
                             }
                             if (inThinkingBlock && delta.includes('</think>')) {
                                 inThinkingBlock = false;

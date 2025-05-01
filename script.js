@@ -415,25 +415,20 @@ ${seatTableFormat}
                     }
                     try {
                         const parsedData = JSON.parse(jsonData);
-                        const delta = parsedData.choices[0]?.delta?.content;
-                        if (delta) {
-                            accumulatedContent += delta;
-
-                            // 检查是否有 reasoning_content 或 content
-                            const reasoningContent = parsedData.choices[0]?.delta?.reasoning_content;
-                            const outputContent = parsedData.choices[0]?.delta?.content;
-                            
-                            if (reasoningContent) {
-                                thinkingContent += reasoningContent;
-                                aiThinkingPre.textContent = thinkingContent;
-                                aiThinkingOutputDiv.style.display = 'block'; // 确保显示思考过程区域
-                            }
-                            
-                            if (outputContent) {
-                                finalTableContent += outputContent;
-                                if (finalTableContent.trim()) {
-                                    tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格部分
-                                }
+                        // 检查是否有 reasoning_content 或 content
+                        const reasoningContent = parsedData.choices[0]?.delta?.reasoning_content;
+                        const outputContent = parsedData.choices[0]?.delta?.content;
+                        
+                        if (reasoningContent) {
+                            thinkingContent += reasoningContent;
+                            aiThinkingPre.textContent = thinkingContent;
+                            aiThinkingOutputDiv.style.display = 'block'; // 确保显示思考过程区域
+                        }
+                        
+                        if (outputContent) {
+                            finalTableContent += outputContent;
+                            if (finalTableContent.trim()) {
+                                tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格部分
                             }
                         }
                     } catch (e) {

@@ -359,7 +359,8 @@ ${remarks}
 在编排座位时，请遵循以下原则：
 - 保持编排合理，表格靠上的是前排，挨在一起的是同桌。
 - 要综合考虑人物表和备注的内容来安排座位。
-
+- 务必确保人员信息表中的所有人物都被编排到座位上，并且不存在重复和遗漏。
+- 如果备注中有特定的座位要求，请优先满足这些要求。
 以下是座位表格式，你需要将表格中“座位一，座位二…”的信息替换为人物表中的人物，不修改表格其他内容：
 <座位表格式>
 ${seatTableFormat}
@@ -417,32 +418,37 @@ ${seatTableFormat}
                             accumulatedContent += delta;
 
                             // 检查是否进入或退出 <think> 块
-                            if (accumulatedContent.includes('<think>') && !inThinkingBlock) {
+                            if (delta.includes('<think>') && !inThinkingBlock) {
                                 inThinkingBlock = true;
                                 thinkingContent = ''; // 重置思考内容
                             }
-                            if (inThinkingBlock && accumulatedContent.includes('</think>')) {
+                            if (inThinkingBlock && delta.includes('</think>')) {
                                 inThinkingBlock = false;
                                 // 提取完整的思考内容
-                                const thinkMatch = accumulatedContent.match(/<think>([\s\S]*?)<\/think>/i);
-                                if (thinkMatch && thinkMatch[1]) {
-                                    thinkingContent = thinkMatch[1].trim();
-                                    aiThinkingPre.textContent = thinkingContent;
-                                }
+                                thinkingContent += delta.split('</think>')[0];
+                                aiThinkingPre.textContent = thinkingContent;
                                 // 提取思考块之后的内容作为可能的表格开头
-                                const contentAfterThink = accumulatedContent.substring(accumulatedContent.indexOf('</think>') + 8);
-                                finalTableContent = contentAfterThink; // 开始累积表格内容
-                                tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格部分
+                                const contentAfterThink = delta.split('</think>')[1] || '';
+                                finalTableContent += contentAfterThink; // 开始累积表格内容
+                                if (finalTableContent.trim()) {
+                                    tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格部分
+                                }
                             } else if (inThinkingBlock) {
                                 // 在 <think> 块内，实时更新思考过程
-                                const currentThinkMatch = accumulatedContent.match(/<think>([\s\S]*)/i);
-                                if (currentThinkMatch && currentThinkMatch[1]) {
-                                    aiThinkingPre.textContent = currentThinkMatch[1];
-                                }
-                            } else if (!inThinkingBlock && accumulatedContent.includes('</think>')) {
+                                thinkingContent += delta;
+                                aiThinkingPre.textContent = thinkingContent;
+                            } else if (!inThinkingBlock && delta.includes('</think>')) {
                                 // 如果在 </think> 之后接收到内容，累加到表格内容
+                                finalTableContent += delta.split('</think>')[1] || '';
+                                if (finalTableContent.trim()) {
+                                    tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时更新表格
+                                }
+                            } else if (!inThinkingBlock) {
+                                // 如果不在 <think> 块内，累加到表格内容
                                 finalTableContent += delta;
-                                tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时更新表格
+                                if (finalTableContent.trim()) {
+                                    tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格
+                                }
                             }
                         }
                     } catch (e) {
@@ -461,6 +467,8 @@ ${seatTableFormat}
             localStorage.setItem('arranged_seat_table_markdown', finalMarkdown); // 保存编排后的表格
             // 可以选择隐藏思考过程区域
             aiThinkingOutputDiv.style.display = 'none';
+            // 应用性别着色
+            applyGenderColoring();
         } else {
             tablePreviewDiv.innerHTML = '<p>AI 未能按预期格式返回编排好的座位表。</p>';
             console.error('未能从 AI 响应中提取编排好的座位表:', accumulatedContent);
@@ -477,6 +485,43 @@ ${seatTableFormat}
         aiArrangeButton.disabled = false;
     }
 });
+
+// 应用性别着色
+function applyGenderColoring() {
+    const personnelTable = localStorage.getItem('personnel_table_markdown') || '';
+    if (!personnelTable) return;
+
+    const tableElement = tablePreviewDiv.querySelector('table');
+    if (!tableElement) return;
+
+    // 提取人员性别信息
+    const genderMap = {};
+    const personnelLines = personnelTable.split('\n');
+    for (let i = 2; i < personnelLines.length; i++) { // 跳过表头和分隔行
+        const line = personnelLines[i].trim();
+        if (line) {
+            const parts = line.split('|').map(part => part.trim());
+            if (parts.length >= 3) {
+                const name = parts[1];
+                const gender = parts[2];
+                genderMap[name] = gender;
+            }
+        }
+    }
+
+    // 对座位表格中的人员应用着色
+    const cells = tableElement.querySelectorAll('td');
+    cells.forEach(cell => {
+        const name = cell.textContent.trim();
+        if (genderMap[name]) {
+            if (genderMap[name].includes('男')) {
+                cell.style.backgroundColor = '#e6f3ff'; // 浅蓝色
+            } else if (genderMap[name].includes('女')) {
+                cell.style.backgroundColor = '#ffe6f2'; // 浅桃红色
+            }
+        }
+    });
+}
 
 // 复制座位列表表格
 copyTableButton.addEventListener('click', () => {

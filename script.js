@@ -365,6 +365,8 @@ ${remarks}
 <座位表格式>
 ${seatTableFormat}
 </座位表格式>
+- 如果我提供的人物表中的人数不足以填满座位表，请在表格中用“空座位”替代。
+- 如果我提供的人物表中的人数超过了座位表的座位数，并没有被编排进去的人请在表格中用“人物（未被编排）”注明。
 
 请在<编排好的座位表>标签内输出修改后的表格。
 `;
@@ -418,18 +420,20 @@ ${seatTableFormat}
                             accumulatedContent += delta;
 
                             // 检查是否进入或退出 <think> 块
-                            if (delta.includes('<think>') && !inThinkingBlock) {
+                            if (delta.indexOf('<think>') !== -1 && !inThinkingBlock) {
                                 inThinkingBlock = true;
-                                thinkingContent = delta.split('<think>')[1] || ''; // 获取 <think> 之后的内容
+                                const startIndex = delta.indexOf('<think>') + 7;
+                                thinkingContent = delta.substring(startIndex) || ''; // 获取 <think> 之后的内容
                                 aiThinkingPre.textContent = thinkingContent;
+                                aiThinkingOutputDiv.style.display = 'block'; // 确保显示思考过程区域
                             }
-                            if (inThinkingBlock && delta.includes('</think>')) {
+                            if (inThinkingBlock && delta.indexOf('</think>') !== -1) {
                                 inThinkingBlock = false;
-                                // 提取完整的思考内容
-                                thinkingContent += delta.split('</think>')[0];
+                                const endIndex = delta.indexOf('</think>');
+                                thinkingContent += delta.substring(0, endIndex);
                                 aiThinkingPre.textContent = thinkingContent;
                                 // 提取思考块之后的内容作为可能的表格开头
-                                const contentAfterThink = delta.split('</think>')[1] || '';
+                                const contentAfterThink = delta.substring(endIndex + 8) || '';
                                 finalTableContent += contentAfterThink; // 开始累积表格内容
                                 if (finalTableContent.trim()) {
                                     tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格部分
@@ -438,11 +442,13 @@ ${seatTableFormat}
                                 // 在 <think> 块内，实时更新思考过程
                                 thinkingContent += delta;
                                 aiThinkingPre.textContent = thinkingContent;
-                            } else if (!inThinkingBlock && delta.includes('</think>')) {
+                                aiThinkingOutputDiv.style.display = 'block'; // 确保显示思考过程区域
+                            } else if (!inThinkingBlock && delta.indexOf('</think>') !== -1) {
                                 // 如果在 </think> 之后接收到内容，累加到表格内容
-                                finalTableContent += delta.split('</think>')[1] || '';
+                                const endIndex = delta.indexOf('</think>');
+                                finalTableContent += delta.substring(endIndex + 8) || '';
                                 if (finalTableContent.trim()) {
-                                    tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时更新表格
+                                    tablePreviewDiv.innerHTML = marked.parse(finalTableContent); // 实时显示表格
                                 }
                             } else if (!inThinkingBlock) {
                                 // 如果不在 <think> 块内，累加到表格内容

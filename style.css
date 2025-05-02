@@ -4,10 +4,10 @@ body {
     color: #333;
     margin: 0;
     padding: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .container {
@@ -213,4 +213,5 @@ button:hover {
     width: 100%;
     opacity: 0;
     transition: opacity 0.5s ease;
+    margin-top: auto;
 }

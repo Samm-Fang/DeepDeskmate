@@ -205,3 +205,13 @@ button:hover {
     font-weight: bold;
     color: #555;
 }
+
+footer {
+    text-align: center;
+    padding: 10px;
+    background-color: #f0f0f0;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+    display: none;
+}

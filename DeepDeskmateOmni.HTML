@@ -797,8 +797,18 @@ ${seatTableFormat}
             }
         });
     </script>
-    <footer style="text-align: center; padding: 10px; background-color: #f0f0f0; position: fixed; bottom: 0; width: 100%;">
+    <footer id="footer" style="text-align: center; padding: 10px; background-color: #f0f0f0; position: relative; bottom: 0; width: 100%; display: none;">
         <p>Developed By SammFang | GitHub: <a href="https://github.com/Samm-Fang/DeepDeskmate" target="_blank">https://github.com/Samm-Fang/DeepDeskmate</a></p>
     </footer>
+    <script>
+        window.addEventListener('scroll', function() {
+            const footer = document.getElementById('footer');
+            if ((window.innerHeight + window.pageYOffset) >= document.body.offsetHeight) {
+                footer.style.display = 'block';
+            } else {
+                footer.style.display = 'none';
+            }
+        });
+    </script>
 </body>
 </html>

@@ -206,12 +206,11 @@ button:hover {
     color: #555;
 }
 
-footer {
+#footer {
     text-align: center;
     padding: 10px;
     background-color: #f0f0f0;
-    position: relative;
-    bottom: 0;
     width: 100%;
-    display: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
 }

@@ -61,18 +61,18 @@
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> 
     <script src="script.js"></script>
-    <footer id="footer" style="text-align: center; padding: 10px; background-color: #f0f0f0; position: relative; bottom: 0; width: 100%; visibility: hidden;">
-        <p>Developed By SammFang | GitHub: <a href="https://github.com/Samm-Fang/DeepDeskmate" target="_blank">https://github.com/Samm-Fang/DeepDeskmate</a></p>
-    </footer>
+    <div id="footer" style="text-align: center; padding: 10px; background-color: #f0f0f0; width: 100%; opacity: 0; transition: opacity 0.5s ease;">
+        <p>Developed By SammFang | GitHub: <a href="https://github.com/Samm-Fang/DeepDeskmate" target="_blank" rel="noopener noreferrer">https://github.com/Samm-Fang/DeepDeskmate</a></p>
+    </div>
     <script>
         window.addEventListener('scroll', function() {
             const footer = document.getElementById('footer');
             const scrollPosition = window.innerHeight + window.pageYOffset;
             const totalHeight = document.documentElement.scrollHeight;
-            if (scrollPosition >= totalHeight - 10) { // 提前10像素显示，以确保在底部时可见
-                footer.style.visibility = 'visible';
+            if (scrollPosition >= totalHeight - 50) { // 提前50像素开始渐显
+                footer.style.opacity = '1';
             } else {
-                footer.style.visibility = 'hidden';
+                footer.style.opacity = '0';
             }
         });
         // 页面加载时检查滚动位置
@@ -80,8 +80,8 @@
             const footer = document.getElementById('footer');
             const scrollPosition = window.innerHeight + window.pageYOffset;
             const totalHeight = document.documentElement.scrollHeight;
-            if (scrollPosition >= totalHeight - 10) {
-                footer.style.visibility = 'visible';
+            if (scrollPosition >= totalHeight - 50) {
+                footer.style.opacity = '1';
             }
         });
     </script>

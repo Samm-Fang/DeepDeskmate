@@ -210,8 +210,11 @@ button:hover {
     text-align: center;
     padding: 10px;
     background-color: #f0f0f0;
-    width: 100%;
+    width: 100% - 15px;
+    max-width: 1200px; /* 与主体宽度相同 */
     opacity: 0;
     transition: opacity 0.5s ease;
-    margin-top: auto;
+    margin-bottom: auto;
+    margin-top: 50px; /* 下移30个像素 */
+    border-radius: 12px; /* 添加圆角 */
 }

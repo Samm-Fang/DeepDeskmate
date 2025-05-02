@@ -11,10 +11,10 @@
             color: #333;
             margin: 0;
             padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .container {
@@ -211,6 +211,19 @@
             content: "API 密钥 (已折叠)";
             font-weight: bold;
             color: #555;
+        }
+
+        #footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #f0f0f0;
+            width: 100% - 15px;
+            max-width: 1200px; /* 与主体宽度相同 */
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            margin-bottom: auto;
+            margin-top: 50px; /* 下移30个像素 */
+            border-radius: 12px; /* 添加圆角 */
         }
     </style>
 </head>
@@ -794,30 +807,6 @@ ${seatTableFormat}
                 });
             } else {
                 alert('请先生成表格。');
-            }
-        });
-    </script>
-    <div id="footer" style="text-align: center; padding: 10px; background-color: #f0f0f0; width: 100%; opacity: 0; transition: opacity 0.5s ease;">
-        <p>Developed By SammFang | GitHub: <a href="https://github.com/Samm-Fang/DeepDeskmate" target="_blank" rel="noopener noreferrer">https://github.com/Samm-Fang/DeepDeskmate</a></p>
-    </div>
-    <script>
-        window.addEventListener('scroll', function() {
-            const footer = document.getElementById('footer');
-            const scrollPosition = window.innerHeight + window.pageYOffset;
-            const totalHeight = document.documentElement.scrollHeight;
-            if (scrollPosition >= totalHeight - 50) { // 提前50像素开始渐显
-                footer.style.opacity = '1';
-            } else {
-                footer.style.opacity = '0';
-            }
-        });
-        // 页面加载时检查滚动位置
-        window.addEventListener('load', function() {
-            const footer = document.getElementById('footer');
-            const scrollPosition = window.innerHeight + window.pageYOffset;
-            const totalHeight = document.documentElement.scrollHeight;
-            if (scrollPosition >= totalHeight - 50) {
-                footer.style.opacity = '1';
             }
         });
     </script>

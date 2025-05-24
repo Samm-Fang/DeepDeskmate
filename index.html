@@ -8,19 +8,20 @@
 </head>
 <body>
     <div class="container">
-        <h1>DeepDeskmate</h1>
-
-        <div class="api-key-section" id="api-key-section">
-            <label for="api-key">DeepSeek API 密钥:</label>
-            <input type="password" id="api-key" placeholder="在此输入您的 API 密钥">
-            <button id="save-key">保存密钥</button>
-            <button id="toggle-api-key" onclick="toggleApiKeySection()">折叠</button>
+        <div class="main-header">
+            <h1>DeepDeskmate</h1>
+            <!-- 模型配置入口 -->
+            <div class="settings-section">
+                <button id="open-settings-button">模型配置</button>
+            </div>
         </div>
 
         <div class="input-section">
             <label for="person-description">输入人物描述:</label>
-            <textarea id="person-description" rows="4" placeholder="例如：张三，男，技术负责人，擅长沟通协调。"></textarea>
-            <button id="send-description">发送给 AI</button>
+            <div class="description-input-group">
+                <textarea id="person-description" rows="4" placeholder="例如：张三，男，技术负责人，擅长沟通协调。"></textarea>
+                <button id="send-description">发送描述给AI</button>
+            </div>
         </div>
 
         <div class="loading-indicator" id="loading" style="display: none;">
@@ -30,7 +31,19 @@
         <div class="content-wrapper">
             <div class="output-section">
                 <h2>人员信息表</h2>
+                <div class="controls">
+                    <button id="clear-personnel-table" class="secondary-button">清除表格</button>
+                    <button id="import-personnel-button" class="secondary-button">导入表格</button>
+                    <button id="copy-personnel-info" class="secondary-button">复制人员信息</button>
+                </div>
+                <div id="loading" style="display: none;">AI正在思考...</div>
                 <div id="markdown-output"></div>
+                
+                <div class="import-personnel-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                    <h3>导入人员信息表 (Markdown格式)</h3>
+                    <textarea id="import-personnel-markdown" rows="6" placeholder="在此粘贴人员信息的Markdown表格，例如：\n| 人物 | 性别 | 备注 |\n| --- | --- | --- |\n| 张三 | 男 | 技术部 |\n| 李四 | 女 | 产品部 |"></textarea>
+                    <!-- 导入按钮已移到上面的 controls div -->
+                </div>
             </div>
 
             <div class="table-generator-section">
@@ -42,22 +55,62 @@
                     <input type="number" id="cols" min="1" value="3">
                     <label for="desk-mates">同桌数:</label>
                     <input type="number" id="desk-mates" min="1" value="1">
-                    <button id="generate-table">生成表格</button>
-                    <button id="copy-table">复制表格</button>
+                    <div class="generator-buttons">
+                        <button id="generate-table">生成表格</button>
+                        <button id="copy-arranged-table" class="secondary-button">复制编排结果</button>
+                    </div>
                 </div>
                 <div class="arrangement-section">
                     <label for="arrangement-remarks">编排备注:</label>
                     <textarea id="arrangement-remarks" rows="3" placeholder="输入需要 AI 考虑的编排要求，例如：张三和李四是好朋友，请安排他们坐在一起。王五视力不好，请安排在前排。"></textarea>
                     <button id="ai-arrange-button">AI 智能编排</button>
+                    
+                    <div id="seat-modification-section" class="seat-modification-section" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                        <h3>细微调整座位</h3>
+                        <p>当前人员信息表和上方显示的座位表将作为AI调整的参考。</p>
+                        <textarea id="seat-modification-input" rows="3" placeholder="例如：请将张三和王五调换位置。李四想坐窗边。"></textarea>
+                        <button id="send-seat-modification-button">发送修改指令</button>
+                        <div id="seat-modification-loading" style="display: none;">AI 正在处理修改...</div>
+                        <div id="seat-modification-output" style="margin-top:10px; padding:10px; border:1px dashed #ccc; border-radius:4px; display:none;"></div>
+                    </div>
                 </div>
                 <div id="ai-thinking-output" style="display: none;">
                     <h3>AI 思考过程...</h3>
                     <pre></pre> <!-- 用于显示思考过程 -->
                 </div>
+                <!-- arrangement-actions div removed as its content moved -->
                 <div id="table-preview"></div>
+
+                <div class="import-seat-table-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                    <h3>导入座位表 (Markdown格式)</h3>
+                    <textarea id="import-seat-table-markdown" rows="6" placeholder="在此粘贴座位表的Markdown，AI将基于此进行修改。"></textarea>
+                    <button id="import-seat-table-button" class="secondary-button">导入座位表</button>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- 模型配置侧边栏 -->
+    <aside id="settings-sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h2>模型配置</h2>
+            <span class="close-button">&times;</span>
+        </div>
+        <div class="sidebar-content">
+            <div id="active-config-display" class="active-config-display" style="display: none;"><p>当前使用配置: <strong></strong></p></div>
+            <div class="deepseek-quick-config" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
+                <h3>DeepSeek 快速配置</h3>
+                <label for="deepseek-api-key">DeepSeek API Key:</label>
+                <input type="password" id="deepseek-api-key" placeholder="在此输入 DeepSeek API Key">
+                <button id="quick-config-deepseek">快速配置 DeepSeek</button>
+            </div>
+            
+            <div id="model-configs-list">
+                <!-- 模型配置项将在这里动态添加 -->
+            </div>
+             <button id="add-model-config">添加模型配置</button>
+        </div>
+    </aside>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> 
     <script src="script.js"></script>

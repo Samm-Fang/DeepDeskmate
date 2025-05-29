@@ -7,13 +7,11 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
+<div class="app-wrapper"> <!-- 新增的包裹层 -->
+    <div class="container"> <!-- 主内容区域 -->
         <div class="main-header">
             <h1>DeepDeskmate</h1>
-            <!-- 模型配置入口 -->
-            <div class="settings-section">
-                <button id="open-settings-button">模型配置</button>
-            </div>
+            <!-- 模型配置按钮将移动到左下角 -->
         </div>
 
         <div class="input-section">
@@ -35,9 +33,16 @@
                     <button id="clear-personnel-table" class="secondary-button">清除表格</button>
                     <button id="import-personnel-button" class="secondary-button">导入表格</button>
                     <button id="copy-personnel-info" class="secondary-button">复制人员信息</button>
+                    <button id="toggle-personnel-list" class="secondary-button">折叠列表</button> 
                 </div>
                 <div id="loading" style="display: none;">AI正在思考...</div>
-                <div id="markdown-output"></div>
+                <div class="personnel-thinking-output"> <!-- 新增：人员信息处理的思考过程 -->
+                    <h3>AI 思考过程...</h3>
+                    <pre></pre>
+                </div>
+                <div id="markdown-output-wrapper" class="personnel-list-wrapper"> <!-- 包裹 markdown-output -->
+                    <div id="markdown-output"></div>
+                </div>
                 
                 <div class="import-personnel-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
                     <h3>导入人员信息表 (Markdown格式)</h3>
@@ -71,10 +76,14 @@
                         <textarea id="seat-modification-input" rows="3" placeholder="例如：请将张三和王五调换位置。李四想坐窗边。"></textarea>
                         <button id="send-seat-modification-button">发送修改指令</button>
                         <div id="seat-modification-loading" style="display: none;">AI 正在处理修改...</div>
+                        <div class="seat-modify-thinking-output"> <!-- 新增：座位微调的思考过程 -->
+                            <h3>AI 思考过程...</h3>
+                            <pre></pre>
+                        </div>
                         <div id="seat-modification-output" style="margin-top:10px; padding:10px; border:1px dashed #ccc; border-radius:4px; display:none;"></div>
                     </div>
                 </div>
-                <div id="ai-thinking-output" style="display: none;">
+                <div id="ai-thinking-output"> <!-- 这个是座位编排的思考过程，保留id，但样式会通过class统一 -->
                     <h3>AI 思考过程...</h3>
                     <pre></pre> <!-- 用于显示思考过程 -->
                 </div>
@@ -91,26 +100,75 @@
     </div>
 
     <!-- 模型配置侧边栏 -->
-    <aside id="settings-sidebar" class="sidebar">
+    <aside id="settings-sidebar" class="sidebar closed"> <!-- 侧边栏现在是 app-wrapper 的一部分，初始关闭 -->
         <div class="sidebar-header">
             <h2>模型配置</h2>
-            <span class="close-button">&times;</span>
+            <!-- 关闭按钮已移除，将通过新的左下角按钮控制 -->
         </div>
         <div class="sidebar-content">
-            <div id="active-config-display" class="active-config-display" style="display: none;"><p>当前使用配置: <strong></strong></p></div>
-            <div class="deepseek-quick-config" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
+            <!-- DeepSeek 快速配置 -->
+            <div class="config-section deepseek-quick-config">
                 <h3>DeepSeek 快速配置</h3>
                 <label for="deepseek-api-key">DeepSeek API Key:</label>
                 <input type="password" id="deepseek-api-key" placeholder="在此输入 DeepSeek API Key">
                 <button id="quick-config-deepseek">快速配置 DeepSeek</button>
             </div>
-            
-            <div id="model-configs-list">
-                <!-- 模型配置项将在这里动态添加 -->
+
+            <!-- 使用模型配置板块 -->
+            <div class="config-section model-usage-settings">
+                <h3>使用模型选择</h3>
+                <div class="model-selection-group">
+                    <label for="info-model-trigger">信息整理模型:</label>
+                    <div class="custom-select-wrapper">
+                        <button type="button" id="info-model-trigger" class="custom-select-trigger" data-dropdown-id="info-model-dropdown">--选择模型--</button>
+                        <div class="custom-select-dropdown" id="info-model-dropdown">
+                            <input type="text" class="model-search-input" placeholder="搜索模型...">
+                            <ul class="custom-options-list"></ul>
+                        </div>
+                    </div>
+                    <input type="hidden" id="info-model-select-value" name="infoModelValue">
+                </div>
+                <div class="model-selection-group">
+                    <label for="seating-model-trigger">座位表生成模型:</label>
+                    <div class="custom-select-wrapper">
+                        <button type="button" id="seating-model-trigger" class="custom-select-trigger" data-dropdown-id="seating-model-dropdown">--选择模型--</button>
+                        <div class="custom-select-dropdown" id="seating-model-dropdown">
+                            <input type="text" class="model-search-input" placeholder="搜索模型...">
+                            <ul class="custom-options-list"></ul>
+                        </div>
+                    </div>
+                    <input type="hidden" id="seating-model-select-value" name="seatingModelValue">
+                </div>
+                <div class="model-selection-group">
+                    <label for="seat-modify-model-trigger">座位微调模型:</label>
+                    <div class="custom-select-wrapper">
+                        <button type="button" id="seat-modify-model-trigger" class="custom-select-trigger" data-dropdown-id="seat-modify-model-dropdown">--选择模型--</button>
+                        <div class="custom-select-dropdown" id="seat-modify-model-dropdown">
+                            <input type="text" class="model-search-input" placeholder="搜索模型...">
+                            <ul class="custom-options-list"></ul>
+                        </div>
+                    </div>
+                    <input type="hidden" id="seat-modify-model-select-value" name="seatModifyModelValue">
+                </div>
+                <button id="save-model-usage-button">保存模型选择</button>
             </div>
-             <button id="add-model-config">添加模型配置</button>
+            
+            <!-- 提供商配置板块 -->
+            <div class="config-section provider-settings">
+                <h3>提供商配置</h3>
+                <div id="provider-list">
+                    <!-- 提供商条目将在这里动态添加 -->
+                </div>
+                <button id="add-provider-button">添加提供商</button>
+            </div>
+
+             <div id="active-config-display" class="active-config-display" style="display: none;"><p>当前信息整理模型: <strong></strong></p></div>
         </div>
     </aside>
+</div> <!-- app-wrapper 结束 -->
+
+    <!-- 新的侧边栏触发按钮 -->
+    <button id="sidebar-toggle-button" class="sidebar-toggle-button">⚙️</button>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> 
     <script src="script.js"></script>

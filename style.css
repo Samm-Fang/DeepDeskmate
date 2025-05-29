@@ -3,34 +3,73 @@ body {
     background-color: #f4f7f6;
     color: #333;
     margin: 0;
-    padding: 20px 0; /* Add padding to top and bottom of body */
+    padding: 0; /* Remove body padding, handle spacing with wrapper */
     line-height: 1.6;
     display: flex;
-    flex-direction: column;
-    align-items: center; /* Center .container horizontally */
+    flex-direction: column; /* Ensure .app-wrapper and #footer stack vertically */
     min-height: 100vh;
     box-sizing: border-box;
 }
 
-.container {
+.app-wrapper { /* New wrapper for main content and sidebar */
+    display: flex;
+    width: 100%;
+    height: 100vh; /* Full viewport height */
+    box-sizing: border-box;
+    position: relative; /* For potential absolute positioning of sidebar if needed, or just for structure */
+    overflow-x: hidden; /* Prevent horizontal scrollbar during transition */
+}
+
+/* 新的侧边栏触发按钮样式 */
+.sidebar-toggle-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px; /* 改为右侧 */
+    width: 50px;
+    height: 50px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1001; /*确保在其他内容之上，但在侧边栏之下（如果侧边栏打开）*/
+    transition: background-color 0.3s ease, right 0.3s ease-in-out; /* 添加 right 过渡 */
+}
+
+.sidebar-toggle-button:hover {
+    background-color: #2980b9;
+}
+
+/* .sidebar.open + .sidebar-toggle-button rule removed as it's ineffective due to DOM structure */
+/* Button movement will be handled by JavaScript */
+
+
+.container { /* Main content area */
+    flex-grow: 1;
     background-color: #ffffff;
     padding: 30px;
-    border-radius: 16px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 1200px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 30px; /* Consistent gap between direct children of container */
+    gap: 30px;
+    overflow-y: auto; /* Allow scrolling for main content if it overflows */
+    height: 100%; /* Fill height of app-wrapper */
+    transition: margin-right 0.3s ease-in-out, width 0.3s ease-in-out; /* 修改过渡属性 */
+    width: 100%; /* 初始宽度 */
 }
+/* .app-wrapper.sidebar-visible .container is no longer needed in this form */
+/* .container.sidebar-open-content-shift is now used */
 
 .main-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 20px; /* Gap between title and settings button */
-    /* margin-bottom: -10px; Remove or adjust if container gap is sufficient */
 }
 
 h1 {
@@ -125,32 +164,30 @@ button:disabled {
 
 /* Specific Button Groupings and Alignments */
 .settings-section {
-    padding: 0; /* Remove padding if it's just a button container now */
+    padding: 0; 
     border: none;
     box-shadow: none;
     background-color: transparent;
-    /* align-items: flex-start; is fine */
 }
 #open-settings-button {
     width: auto; 
 }
 
 .input-section {
-    gap: 8px; /* Gap between label and input group */
+    gap: 8px; 
 }
 .description-input-group {
     display: flex;
-    align-items: flex-start; /* Align button with top of textarea */
+    align-items: flex-start; 
     gap: 10px;
 }
 .description-input-group textarea {
-    flex-grow: 1; /* Textarea takes available space */
-    margin-bottom: 0; /* Remove default margin if any */
+    flex-grow: 1; 
+    margin-bottom: 0; 
 }
 .description-input-group #send-description {
-    width: auto; /* Button size to content */
-    flex-shrink: 0; /* Prevent button from shrinking */
-    /* align-self: flex-start; Remove if not needed due to parent align-items */
+    width: auto; 
+    flex-shrink: 0; 
 }
 
 
@@ -159,7 +196,7 @@ button:disabled {
     gap: 10px;
 }
 .output-section .controls button {
-    flex-grow: 1; /* Make buttons in this group share space */
+    flex-grow: 1; 
 }
 
 .import-personnel-section {
@@ -168,11 +205,11 @@ button:disabled {
     gap: 10px;
 }
 .import-personnel-section button#import-personnel-button {
-    align-self: flex-end; /* Align to right, was moved to .controls */
+    align-self: flex-end; 
     width: auto;
 }
 
-.import-seat-table-section { /* Style similar to import-personnel-section */
+.import-seat-table-section { 
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -182,12 +219,12 @@ button:disabled {
 }
 .import-seat-table-section h3 {
     margin-top: 0;
-    margin-bottom: 5px; /* Consistent with other h3 in similar sections */
-    font-size: 1.2rem; /* Consistent size */
+    margin-bottom: 5px; 
+    font-size: 1.2rem; 
     color: #34495e;
 }
 .import-seat-table-section textarea {
-    min-height: 80px; /* Adjust height as needed */
+    min-height: 80px; 
 }
 .import-seat-table-section button {
     align-self: flex-end;
@@ -198,7 +235,6 @@ button:disabled {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    /* margin-top, padding-top, border-top are set inline in HTML, can be moved here if preferred */
 }
 .seat-modification-section h3 {
     margin-top: 0;
@@ -213,7 +249,7 @@ button:disabled {
     margin-bottom: 5px;
 }
 .seat-modification-section textarea {
-    min-height: 60px; /* Shorter textarea for modification input */
+    min-height: 60px; 
 }
 .seat-modification-section button {
     align-self: flex-end;
@@ -221,7 +257,15 @@ button:disabled {
 }
 #seat-modification-output {
     font-size: 0.9rem;
-    white-space: pre-wrap; /* To respect newlines from AI */
+    white-space: pre-wrap; 
+    padding: 15px; /* Added padding to match thinking output */
+    background-color: transparent; /* Added background to match thinking output */
+    border: 2px dashed #cccccc; /* Changed border to match thinking output */
+    border-radius: 8px; /* Added border-radius to match thinking output */
+    margin-top: 10px; /* Added margin-top to match thinking output */
+    /* display: none; /* Initial state if needed, then controlled by JS */
+    /* opacity: 0; /* Initial state if needed, then controlled by JS */
+    /* transition: opacity 0.3s ease-in-out; /* Transition if needed */
 }
 
 
@@ -232,11 +276,11 @@ button:disabled {
     align-items: center;
 }
 .table-generator-section .generator-controls label {
-    margin-bottom: 0; /* Remove bottom margin for inline labels */
+    margin-bottom: 0; 
 }
 .table-generator-section .generator-controls input[type="number"] {
-    width: 70px; /* Smaller width for number inputs */
-    margin-bottom: 0; /* Remove bottom margin */
+    width: 70px; 
+    margin-bottom: 0; 
 }
 .table-generator-section .generator-buttons {
     display: flex;
@@ -244,7 +288,7 @@ button:disabled {
     width: 100%; 
 }
 .table-generator-section .generator-buttons button {
-    flex-grow: 1; /* Make buttons share space */
+    flex-grow: 1; 
 }
 
 
@@ -253,17 +297,12 @@ button:disabled {
     flex-direction: column;
     gap: 10px;
 }
-/* .arrangement-controls is removed, direct styling for children if needed */
 .table-generator-section .arrangement-section textarea#arrangement-remarks {
-    /* Styles for textarea if needed, already covered by general textarea styles */
 }
 .table-generator-section .arrangement-section button#ai-arrange-button {
-    width: 100%; /* Make it full width as it's now on its own line */
-    margin-top: 5px; /* Add some space above it */
+    width: 100%; 
+    margin-top: 5px; 
 }
-
-/* .arrangement-actions div is removed */
-/* #copy-arranged-table is now in .generator-buttons */
 
 
 /* Output Areas */
@@ -272,9 +311,19 @@ button:disabled {
     padding: 15px;
     border-radius: 8px;
     background-color: #ffffff;
-    min-height: 120px;
-    overflow-x: auto;
+    min-height: 120px; /* Base min-height, specific overrides might apply */
+    overflow-x: auto; 
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Specific styles for #table-preview to handle vertical growth and scrolling */
+#table-preview {
+    /* flex-grow: 1; Removed as per new requirement */
+    /* overflow-y: auto; Removed to allow content to define height */
+    /* min-height: 0; Removed to allow content to define height */
+    display: flex; 
+    flex-direction: column; 
+    /* overflow-x: auto; is handled by a more general rule below if needed */
 }
 
 /* Markdown Table Styles */
@@ -285,7 +334,6 @@ button:disabled {
     margin-top: 10px;
     border: 1px solid #ddd;
     border-radius: 6px;
-    overflow: hidden;
 }
 
 #markdown-output th, #markdown-output td, #table-preview th, #table-preview td {
@@ -294,18 +342,18 @@ button:disabled {
     border-bottom: 1px solid #eee;
 }
 #markdown-output td:not(:last-child), #table-preview td:not(:last-child) {
-    border-right: 1px solid #eee; /* Add vertical borders */
+    border-right: 1px solid #eee; 
 }
 
 
 #markdown-output th, #table-preview th {
     background-color: #f8f9fa;
-    font-weight: 600; /* Slightly less bold */
-    color: #454d55; /* Darker gray for header text */
-    border-bottom: 2px solid #dee2e6; /* Stronger bottom border for header */
+    font-weight: 600; 
+    color: #454d55; 
+    border-bottom: 2px solid #dee2e6; 
 }
 #markdown-output th:not(:last-child), #table-preview th:not(:last-child) {
-    border-right: 1px solid #dee2e6; /* Vertical borders for header */
+    border-right: 1px solid #dee2e6; 
 }
 
 
@@ -314,52 +362,118 @@ button:disabled {
 }
 
 #markdown-output tr:nth-child(even) td, #table-preview tr:nth-child(even) td {
-    background-color: #f9f9f9; /* Subtle even row color */
+    background-color: #f9f9f9; 
 }
 
 /* Layout for Output and Table Generator */
 .content-wrapper {
-    display: grid;
-    grid-template-columns: 1fr; /* Default to single column for smaller screens */
+    display: flex; 
     gap: 30px;
+    align-items: stretch; /* Children will stretch to the height of the tallest item */
+    flex-grow: 1; /* Allow it to take available vertical space in .container */
+    min-height: 0; /* Important for a flex item that grows, to allow shrinking if needed */
+    /* overflow: hidden; /* Consider if clipping is desired for the wrapper itself */
 }
 
-@media (min-width: 768px) {
+.output-section {
+    /* display: flex; flex-direction: column; is already set by generic section styles */
+    min-height: 800px; /* New requirement */
+    flex-shrink: 0; /* Prevent output section from shrinking too much by default */
+    flex-basis: 45%; /* Default basis, can be adjusted */
+    /* min-width: 320px; Already set */
+    transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, flex-basis 0.3s ease-in-out;
+}
+
+.table-generator-section {
+    /* flex-grow: 1; Removed */
+    min-width: 320px; 
+    /* display: flex; flex-direction: column; is already set by generic section styles */
+    align-self: flex-start; /* Prevent stretching if output-section's min-height makes it taller */
+}
+
+
+@media (max-width: 767px) { 
     .content-wrapper {
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); /* Responsive columns */
+        flex-direction: column;
+    }
+    .output-section, .table-generator-section {
+        width: 100%; 
+        flex-basis: auto; 
+        min-height: auto; /* Reset min-height for stacked view if 800px is too much */
+    }
+    .output-section {
+        min-height: 400px; /* Or a more suitable min-height for mobile */
     }
 }
 
 
-#ai-thinking-output {
+#ai-thinking-output,
+.personnel-thinking-output,
+.seat-modify-thinking-output {
     padding: 15px;
-    background-color: #ecf0f1;
-    border: 1px solid #bdc3c7;
+    background-color: transparent; 
+    border: 2px dashed #cccccc; 
     border-radius: 8px;
     margin-top: 10px;
+    display: none; 
+    opacity: 0; 
+    transition: opacity 0.3s ease-in-out; 
 }
 
-#ai-thinking-output h3 {
+.thinking-output-visible { 
+    display: block !important;
+    opacity: 1 !important;
+}
+
+#ai-thinking-output h3,
+.personnel-thinking-output h3,
+.seat-modify-thinking-output h3 {
     margin-top: 0;
     margin-bottom: 10px;
     font-size: 1.1rem;
-    color: #2c3e50;
-    border-bottom: 1px solid #bdc3c7;
+    color: #555; 
+    border-bottom: 1px solid #ddd;
     padding-bottom: 5px;
 }
 
-#ai-thinking-output pre {
+#ai-thinking-output pre,
+.personnel-thinking-output pre,
+.seat-modify-thinking-output pre {
     white-space: pre-wrap;
     word-wrap: break-word;
     max-height: 200px;
     overflow-y: auto;
-    background-color: #fff;
+    background-color: transparent; 
     padding: 10px;
     border-radius: 6px;
     font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
     font-size: 0.9rem;
-    border: 1px solid #eee;
+    color: #777777; 
+    border: none; 
+    opacity: 0;
+    animation: fadeInText 0.3s ease-in-out forwards;
+    animation-delay: 0.1s; 
 }
+
+@keyframes fadeInText {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Styles for special seat modification commands */
+.seat-mod-command {
+    font-weight: bold;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+}
+.seat-mod-swap { background-color: #e6f3ff; color: #0056b3; border: 1px solid #b3d9ff; } 
+.seat-mod-move { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; } 
+.seat-mod-empty { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; } 
+.seat-mod-fill { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; } 
+.seat-mod-error { background-color: #f8d7da; color: #721c24; font-weight: normal; } 
+.seat-mod-message { color: #555; font-style: italic; } 
+
 
 /* Footer */
 #footer {
@@ -371,12 +485,13 @@ button:disabled {
     box-sizing: border-box;
     opacity: 0;
     transition: opacity 0.5s ease;
-    margin-top: auto; /* Push footer to bottom if content is short */
+    margin-top: auto; 
 }
 
 #footer p {
     margin: 0;
     font-size: 0.9rem;
+    color: #181818; /* Changed color */
 }
 
 #footer a {
@@ -390,26 +505,33 @@ button:disabled {
 
 /* Sidebar Styles */
 .sidebar {
-    position: fixed;
+    width: 350px; 
+    height: 100vh; 
+    position: fixed; 
     top: 0;
-    right: -350px; /* Start off-screen, slightly narrower */
-    width: 350px; /* Sidebar width */
-    height: 100%;
+    right: -350px; 
     background-color: #fdfdfd;
-    box-shadow: -3px 0 12px rgba(0, 0, 0, 0.15);
-    transition: right 0.3s ease-in-out;
-    z-index: 1000;
+    box-shadow: -2px 0 8px rgba(0,0,0,0.1); 
+    z-index: 1000; 
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 20px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: 15px;
+    transition: right 0.3s ease-in-out; 
+    flex-shrink: 0;
 }
 
-.sidebar.open {
-    right: 0;
+.sidebar.open { 
+    right: 0; 
 }
+
+.container.sidebar-open-content-shift {
+    margin-right: 350px; 
+}
+
 
 .sidebar-header {
     display: flex;
@@ -417,23 +539,23 @@ button:disabled {
     align-items: center;
     padding-bottom: 10px;
     border-bottom: 2px solid #3498db;
-    margin-bottom: 0; /* Gap is handled by sidebar flex */
+    margin-bottom: 0; 
 }
 
 .sidebar-header h2 {
     margin: 0;
-    font-size: 1.4rem; /* Slightly smaller */
+    font-size: 1.4rem; 
     color: #34495e;
     border-bottom: none;
     padding-bottom: 0;
 }
 
-.sidebar .close-button {
+.sidebar .close-button { 
      color: #999;
      font-size: 26px;
      font-weight: bold;
      cursor: pointer;
-     padding: 0 5px; /* Easier to click */
+     padding: 0 5px; 
 }
 .sidebar .close-button:hover {
     color: #333;
@@ -442,7 +564,7 @@ button:disabled {
 .sidebar-content {
     display: flex;
     flex-direction: column;
-    gap: 20px; /* Gap between sections in sidebar */
+    gap: 20px; 
 }
 
 .active-config-display {
@@ -460,31 +582,50 @@ button:disabled {
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: space-between; /* Pushes h3 and active-indicator apart if needed */
+    justify-content: space-between; 
 }
 .config-item-header h3 {
-    margin: 0; /* Remove default h3 margin */
+    margin: 0; 
     display: flex;
     align-items: center;
-    gap: 8px; /* Gap between icon and text */
+    gap: 8px; 
     font-size: 1.1rem;
     color: #34495e;
 }
 .collapse-icon {
     font-size: 0.8em;
-    transition: transform 0.2s ease-in-out;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .model-config-item.collapsed .collapse-icon {
     transform: rotate(-90deg);
 }
-.model-config-item.collapsed .config-item-content {
-    display: none;
+
+.model-config-item > .config-item-content { 
+    max-height: 1000px; 
+    overflow: hidden;
+    opacity: 1;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                margin-top 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                padding-top 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                padding-bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    padding-top: 10px; 
+    padding-bottom: 10px;
+    margin-top: 10px; 
+}
+
+.model-config-item.collapsed > .config-item-content {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
 }
 .active-indicator {
     font-size: 0.8rem;
     color: #27ae60;
     font-weight: bold;
-    margin-left: auto; /* Pushes to the right if header is flex */
+    margin-left: auto; 
 }
 
 
@@ -493,13 +634,12 @@ button:disabled {
     border-top: 1px solid #eee;
 }
 .deepseek-quick-config:first-child, #model-configs-list:first-child {
-    /* Remove top border if it's the first direct child after active-config-display or header */
      border-top: none;
      padding-top: 0;
 }
 
 
-.deepseek-quick-config h3 { /* Keep this for DeepSeek section if its h3 is not part of a header */
+.deepseek-quick-config h3 { 
     margin-top: 0;
     margin-bottom: 12px;
     font-size: 1.1rem;
@@ -518,29 +658,116 @@ button:disabled {
     transition: border-color 0.3s ease;
 }
 .model-config-item.active-config {
-    border-color: #27ae60; /* Green border for active config */
+    border-color: #27ae60; 
     box-shadow: 0 0 8px rgba(39, 174, 96, 0.3);
 }
 
-.config-item-content {
+.config-item-content { 
     display: flex;
     flex-direction: column;
-    gap: 10px; /* Consistent gap for content elements */
+    gap: 10px; 
 }
 
 
 .model-config-item label {
-    margin-bottom: 3px; /* Tighter label spacing */
-    font-weight: 500; /* Normal weight for these labels */
+    margin-bottom: 3px; 
+    font-weight: 500; 
 }
 
 .model-config-item input[type="text"],
 .model-config-item input[type="password"],
 .model-config-item select {
-    width: 100%; /* Full width */
+    width: 100%; 
     padding: 8px;
-    margin-bottom: 5px; /* Reduced margin */
+    margin-bottom: 5px; 
 }
+
+.custom-select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.custom-select-trigger {
+    width: 100%;
+    padding: 10px;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    text-align: left;
+    cursor: pointer;
+    font-size: 1rem; 
+    color: #333; 
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+}
+.custom-select-trigger::after { 
+    content: '▼';
+    font-size: 0.7em;
+    margin-left: 8px;
+}
+.custom-select-wrapper.open .custom-select-trigger::after {
+    content: '▲';
+}
+
+.custom-select-dropdown {
+    display: none; 
+    position: absolute;
+    top: 100%; 
+    left: 0;
+    right: 0;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-top: none; 
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    z-index: 1050; 
+    padding: 8px;
+    box-sizing: border-box;
+}
+.custom-select-wrapper.open .custom-select-dropdown {
+    display: block;
+}
+
+.custom-select-dropdown .model-search-input { 
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 8px; 
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+.custom-select-dropdown .model-search-input:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 6px rgba(52, 152, 219, 0.2);
+    outline: none;
+}
+
+.custom-options-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 150px; 
+    overflow-y: auto;
+}
+
+.custom-options-list li {
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    border-radius: 4px;
+}
+
+.custom-options-list li:hover,
+.custom-options-list li.selected { 
+    background-color: #e9ecef;
+}
+.custom-options-list li.hidden-by-search {
+    display: none;
+}
+
 
 .model-config-item .models-list {
     margin-top: 10px;
@@ -564,7 +791,6 @@ button:disabled {
 .model-item input[type="text"], .model-item select { padding: 7px; margin-bottom: 5px; }
 .model-item select[multiple] { height: 70px; }
 
-/* Button styling within sidebar model configs */
 .model-config-item .config-actions {
     display: flex;
     gap: 10px;
@@ -587,16 +813,14 @@ button.secondary-button:hover { background-color: #7f8c8d; }
 button.danger-button { background-color: #e74c3c; }
 button.danger-button:hover { background-color: #c0392b; }
 
-/* Ensure other sidebar buttons also get consistent styling if not covered by above */
-.model-item button.remove-model, /* Already has specific color */
-.model-config-item button.add-model, /* Already has specific color */
-#add-model-config, /* Already has specific color */
-.deepseek-quick-config button { /* Already has specific color */
+.model-item button.remove-model, 
+.model-config-item button.add-model, 
+#add-model-config, 
+.deepseek-quick-config button { 
     width: 100%; 
     padding: 9px;
     font-size: 0.95rem;
 }
-/* Specific overrides if needed, e.g. for remove-model if it's not a danger-button by class */
 .model-item button.remove-model { background-color: #e74c3c; }
 .model-item button.remove-model:hover { background-color: #c0392b; }
 
@@ -613,7 +837,7 @@ button.danger-button:hover { background-color: #c0392b; }
      background-color: #5bc0de;
      color: white;
      font-size: 0.9rem;
-     width: auto; /* Not full width */
+     width: auto; 
 }
 .model-list-controls .fetch-models:hover { background-color: #46b8da; }
 
@@ -622,7 +846,7 @@ button.danger-button:hover { background-color: #c0392b; }
 @media (max-width: 768px) {
     .container {
         padding: 20px;
-        margin: 20px 10px; /* Adjust margin for smaller screens */
+        margin: 20px 10px; 
         gap: 20px;
     }
 
@@ -632,18 +856,18 @@ button.danger-button:hover { background-color: #c0392b; }
     .input-section #send-description,
     .output-section .controls,
     .table-generator-section .generator-buttons,
-    .table-generator-section .arrangement-controls,
-    .table-generator-section #copy-arranged-table {
-        flex-direction: column; /* Stack buttons vertically on small screens */
-        align-items: stretch; /* Make them full width */
+    .table-generator-section .arrangement-section, /* Changed from .arrangement-controls */
+    .table-generator-section #copy-arranged-table { /* This ID might be inside .generator-buttons now */
+        flex-direction: column; 
+        align-items: stretch; 
     }
     .input-section #send-description,
-    .table-generator-section .arrangement-controls button,
+    .table-generator-section .arrangement-section button, /* Target button inside .arrangement-section */
     .table-generator-section #copy-arranged-table {
-        width: 100%; /* Ensure full width when stacked */
+        width: 100%; 
     }
     .output-section .controls button {
-        flex-grow: 0; /* Don't grow when stacked */
+        flex-grow: 0; 
     }
      .table-generator-section .generator-controls {
         flex-direction: column;
@@ -663,3 +887,167 @@ button.danger-button:hover { background-color: #c0392b; }
 /* Gender coloring - already present, kept for completeness */
 .gender-male { background-color: #e6f3ff; }
 .gender-female { background-color: #ffe6f2; }
+
+/* Personnel List Collapsing Styles */
+.personnel-list-wrapper {
+    transition: width 0.3s ease-in-out, padding 0.3s ease-in-out; /* Removed max-height from transition */
+    overflow: hidden; 
+    width: 100%; 
+    /* max-height: 500px; Removed */
+    flex-grow: 1; /* Allow wrapper to grow to fill .output-section */
+    overflow-y: auto; /* Always allow scroll if content overflows */
+    min-height: 0; /* Important for flex item to shrink correctly */
+}
+
+.output-section:not(.personnel-collapsed) .personnel-list-wrapper {
+    /* flex-grow: 1; Already set above */
+    /* overflow-y: auto; Already set above */
+    overflow-x: visible; 
+    /* min-height: 0; Already set above */
+}
+
+.output-section.personnel-collapsed .personnel-list-wrapper {
+    /* width: 100%; Already set by general .personnel-list-wrapper */
+    padding: 0; 
+    /* overflow-y: auto; Already set by general .personnel-list-wrapper */
+    /* flex-grow: 1; Already set by general .personnel-list-wrapper */
+    /* min-height: 0; Already set by general .personnel-list-wrapper */
+}
+
+
+.output-section.personnel-collapsed {
+    width: 120px; 
+    max-width: 170px; 
+    min-width: 100px; 
+    padding: 10px 5px; 
+    flex-basis: 100px; 
+    flex-grow: 0; 
+    flex-shrink: 0; 
+    /* min-height: 800px; will apply unless overridden by media query */
+}
+
+/* Styles for the new div-based list in collapsed mode */
+.output-section.personnel-collapsed .personnel-list-wrapper #markdown-output .personnel-item {
+    padding: 8px 5px;
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: default;
+    position: relative; 
+    border-bottom: 1px solid #eee; 
+}
+.output-section.personnel-collapsed .personnel-list-wrapper #markdown-output .personnel-item:last-child {
+    border-bottom: none;
+}
+.output-section.personnel-collapsed .personnel-list-wrapper #markdown-output .personnel-item-empty {
+    padding: 8px 5px;
+    font-size: 0.9em;
+    color: #777;
+    text-align: center;
+}
+
+
+/* Tooltip for collapsed view (now targets .personnel-item) - REMOVED */
+/*
+.output-section.personnel-collapsed .personnel-list-wrapper #markdown-output .personnel-item:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 105%; 
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    white-space: pre-wrap; 
+    z-index: 1001; 
+    margin-left: 5px; 
+    min-width: 150px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    pointer-events: none; 
+    display: block !important; 
+    opacity: 1 !important; 
+    visibility: visible !important; 
+}
+*/
+
+/* Hide controls except the toggle button when collapsed */
+.output-section.personnel-collapsed .controls button:not(#toggle-personnel-list) {
+    display: none;
+}
+.output-section.personnel-collapsed .controls {
+    justify-content: center; 
+}
+.output-section.personnel-collapsed h2,
+.output-section.personnel-collapsed .import-personnel-section { 
+    display: none;
+}
+.output-section.personnel-collapsed #loading { 
+    display: none !important;
+}
+
+/* Styles for table cells in expanded view (if tooltip is also desired there on name) */
+#markdown-output table td:first-child {
+    position: relative; 
+}
+/* Optional: Tooltip for expanded view table cells (if desired) - REMOVED */
+/*
+#markdown-output table td:first-child:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 0; 
+    top: 100%; 
+    background-color: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    white-space: pre-wrap; 
+    z-index: 1001; 
+    margin-top: 2px; 
+    min-width: 200px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    pointer-events: none; 
+    display: block !important; 
+    opacity: 1 !important; 
+    visibility: visible !important; 
+}
+*/
+/* Add word-wrap for table cells, especially remarks, to prevent overflow */
+#markdown-output td {
+    word-wrap: break-word; 
+    overflow-wrap: break-word; 
+}
+
+
+/* Adjust table generator section when personnel list is collapsed */
+.content-wrapper.personnel-list-collapsed .output-section {
+}
+
+
+/* Ensure the controls button for toggle has appropriate styling if needed */
+#toggle-personnel-list {
+    min-width: 80px; 
+}
+.output-section.personnel-collapsed #toggle-personnel-list {
+    width: 100%; 
+    padding: 10px 5px; 
+}
+
+/* Style for original seat number background */
+.original-seat-number-bg {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 0.65em; 
+    color: rgba(0, 0, 0, 0.25); 
+    z-index: 0; 
+    pointer-events: none; 
+    font-weight: bold;
+}
+
+#table-preview td { 
+    position: relative;
+}

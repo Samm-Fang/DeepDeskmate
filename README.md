@@ -108,7 +108,7 @@ DeepDeskmate 的界面主要分为模型配置、人员信息管理和座位表�
 
 ## 📜 许可证
 
-本项目采用 MIT 许可证授权。详细信息请参阅 [LICENSE](LICENSE) 文件。
+本项目采用 Apache License 2.0 授权。详细信息请参阅 [LICENSE](LICENSE) 文件。
 
 ## 🌐 试用网站
 

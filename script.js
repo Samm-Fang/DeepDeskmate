@@ -1372,7 +1372,7 @@ if (importSeatTableButton) {
 // 函数：尝试从导入的Markdown表格解析结构
 function parseImportedTableStructure(markdown) {
     const lines = markdown.trim().split('\n');
-    if (lines.length < 3) return {}; 
+    if (lines.length < 3) return {}; // 至少需要表头、分隔符、数据行
 
     const headerLine = lines[0].trim();
     const dataLines = lines.slice(2).filter(line => line.trim().startsWith('|') && line.trim().endsWith('|'));
@@ -1380,50 +1380,72 @@ function parseImportedTableStructure(markdown) {
     if (dataLines.length === 0) return {};
 
     const numRows = dataLines.length;
+    let numCols = 0; // 实际座位列数
+    let deskMates = 1; // 默认同桌数为1
 
-    const firstRowCells = dataLines[0].slice(1, -1).split('|');
-    let numCols = 0;
-    let maxDeskMates = 1; 
-
+    // 解析表头以确定列数和同桌数
     const headerCells = headerLine.slice(1, -1).split('|').map(cell => cell.trim().toLowerCase());
-    let potentialCols = 0;
-    let deskMateGroups = [];
-    let currentGroupSize = 0;
+    
+    let currentGroup = [];
+    const deskMateGroups = [];
 
     for (const cell of headerCells) {
-        if (cell.includes('座位') || cell.trim() !== '') { 
-            potentialCols++;
-            currentGroupSize++;
-        }
-        if (cell.includes('走廊') || cell.trim() === '') { 
-            if (currentGroupSize > 0) {
-                deskMateGroups.push(currentGroupSize);
+        if (cell.includes('座位') && cell.trim() !== '') {
+            numCols++; // 只计算包含“座位”的列为有效座位列
+            currentGroup.push(cell);
+        } else if (cell.includes('走廊') || cell.trim() === '') {
+            if (currentGroup.length > 0) {
+                deskMateGroups.push(currentGroup.length);
             }
-            currentGroupSize = 0;
+            currentGroup = []; // 遇到走廊或空单元格，重置当前组
+        } else { // 其他非空非走廊的单元格也视为座位列的一部分
+            numCols++;
+            currentGroup.push(cell);
         }
     }
-    if (currentGroupSize > 0) { 
-        deskMateGroups.push(currentGroupSize);
+    if (currentGroup.length > 0) { // 处理最后一组
+        deskMateGroups.push(currentGroup.length);
     }
 
-    if (potentialCols > 0) {
-        numCols = potentialCols;
-        if (deskMateGroups.length > 0) {
-            maxDeskMates = deskMateGroups[0] > 0 ? deskMateGroups[0] : 1;
-        }
-    } else { 
-        numCols = firstRowCells.length; 
+    if (deskMateGroups.length > 0) {
+        // 取最常见的组大小作为同桌数
+        const groupCounts = {};
+        let maxCount = 0;
+        deskMateGroups.forEach(groupSize => {
+            groupCounts[groupSize] = (groupCounts[groupSize] || 0) + 1;
+            if (groupCounts[groupSize] > maxCount) {
+                maxCount = groupCounts[groupSize];
+                deskMates = groupSize;
+            }
+        });
+    } else if (numCols > 0 && numRows > 0) { // 如果没有明确的走廊分组，但有座位列
+        deskMates = numCols; // 假设所有列都是一个大组（这种情况可能不常见）
     }
 
-    return { rows: numRows, cols: numCols, deskMates: maxDeskMates };
+
+    // 如果通过表头无法有效确定列数，则尝试通过数据行确定（作为后备）
+    if (numCols === 0 && dataLines.length > 0) {
+        const firstDataRowCells = dataLines[0].slice(1, -1).split('|');
+        numCols = firstDataRowCells.filter(cell => cell.trim() !== '').length; // 计算非空数据单元格数量
+        // 这种情况下，同桌数更难确定，默认为1或整个行
+        deskMates = numCols > 0 ? 1 : 1; // 默认为1，除非只有一列则为1
+    }
+    
+    // 确保 deskMates 不为0，并且不超过 numCols
+    if (deskMates === 0 && numCols > 0) deskMates = 1;
+    if (deskMates > numCols && numCols > 0) deskMates = numCols;
+
+
+    return { rows: numRows, cols: numCols, deskMates: deskMates };
 }
 
 // Function to open/show the seat modification dialog/section
 function openSeatModificationDialog() {
     if (seatModificationSection) {
         seatModificationSection.style.display = 'flex'; 
-        if (sendSeatModificationButton) {
-            sendSeatModificationButton.style.display = 'inline-block'; 
+        const sendButton = document.getElementById('send-seat-modification-button'); // 获取按钮
+        if (sendButton) {
+            sendButton.style.display = 'inline-block'; 
         }
         if (seatModificationInput) seatModificationInput.value = ''; 
         if (seatModificationOutput) {
@@ -1439,8 +1461,9 @@ function closeSeatModificationDialog() {
     if (seatModificationSection) {
         seatModificationSection.style.display = 'none'; 
     }
-    if (sendSeatModificationButton) {
-        sendSeatModificationButton.style.display = 'none'; 
+    const sendButton = document.getElementById('send-seat-modification-button'); // 获取按钮
+    if (sendButton) {
+        sendButton.style.display = 'none'; 
     }
 }
 

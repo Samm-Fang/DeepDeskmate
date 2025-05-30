@@ -61,20 +61,25 @@
                     <label for="desk-mates">同桌数:</label>
                     <input type="number" id="desk-mates" min="1" value="1">
                     <div class="generator-buttons">
-                        <button id="ai-arrange-button">AI 智能编排</button> 
+                        <!-- <button id="ai-arrange-button">AI 智能编排</button> --> <!-- 按钮将移动 -->
                         <button id="copy-arranged-table" class="secondary-button">复制编排结果</button>
-                        <button id="send-seat-modification-button" style="display: none;">发送修改指令</button> 
+                        <!-- <button id="send-seat-modification-button" style="display: none;">发送修改指令</button> --> <!-- 按钮将移动 -->
                     </div>
                 </div>
                 <div class="arrangement-section">
                     <div class="arrangement-remarks-wrapper">
-                        <label for="arrangement-remarks">编排备注:</label>
+                        <div class="section-title-button-group">
+                            <label for="arrangement-remarks">编排备注:</label>
+                            <button id="ai-arrange-button" class="inline-button">编排</button>
+                        </div>
                         <textarea id="arrangement-remarks" rows="3" placeholder="输入需要 AI 考虑的编排要求，例如：张三和李四是好朋友，请安排他们坐在一起。王五视力不好，请安排在前排。"></textarea>
                     </div>
                     
                     <div id="seat-modification-section" class="seat-modification-section" style="display: none;">
-                        <h3>细微调整座位</h3>
-                        
+                        <div class="section-title-button-group">
+                            <h3>细微调整座位</h3>
+                            <button id="send-seat-modification-button" class="inline-button" style="display: none;">发送</button>
+                        </div>
                         <textarea id="seat-modification-input" rows="3" placeholder="例如：请将张三和王五调换位置。李四想坐窗边。"></textarea>
                         
                         <div id="seat-modification-loading" style="display: none;">AI 正在处理修改...</div>

@@ -296,7 +296,7 @@ button:disabled {
     display: flex;
     flex-direction: row; 
     gap: 20px; 
-    align-items: stretch; /* 改为 stretch 使子项高度一致 */
+    align-items: flex-start; /* 改回 flex-start，允许内容决定自身高度，避免被拉伸 */
 }
 
 .arrangement-remarks-wrapper, 
@@ -304,12 +304,13 @@ button:disabled {
     flex: 1; 
     display: flex;
     flex-direction: column;
-    gap: 10px; /* 各自内部子元素的间距 */
-    padding: 15px; /* 内边距 */
-    border: 1px solid #e0e0e0; /* 边框 */
-    border-radius: 8px; /* 圆角 */
-    background-color: #f9f9f9; /* 背景色 */
-    min-width: 0; /* 允许收缩 */
+    gap: 10px; 
+    padding: 15px; 
+    border: 1px solid #e0e0e0; 
+    border-radius: 8px; 
+    background-color: #f9f9f9; 
+    min-width: 0;
+    /* 移除 align-items: stretch; 如果之前有的话，或确保其不影响内部对齐 */
 }
 
 /* 确保这些包装器内的标签和文本区域行为正确 */

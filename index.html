@@ -61,20 +61,22 @@
                     <label for="desk-mates">同桌数:</label>
                     <input type="number" id="desk-mates" min="1" value="1">
                     <div class="generator-buttons">
-                        <button id="generate-table">生成表格</button>
+                        <button id="ai-arrange-button">AI 智能编排</button> 
                         <button id="copy-arranged-table" class="secondary-button">复制编排结果</button>
+                        <button id="send-seat-modification-button" style="display: none;">发送修改指令</button> 
                     </div>
                 </div>
                 <div class="arrangement-section">
-                    <label for="arrangement-remarks">编排备注:</label>
-                    <textarea id="arrangement-remarks" rows="3" placeholder="输入需要 AI 考虑的编排要求，例如：张三和李四是好朋友，请安排他们坐在一起。王五视力不好，请安排在前排。"></textarea>
-                    <button id="ai-arrange-button">AI 智能编排</button>
+                    <div class="arrangement-remarks-wrapper">
+                        <label for="arrangement-remarks">编排备注:</label>
+                        <textarea id="arrangement-remarks" rows="3" placeholder="输入需要 AI 考虑的编排要求，例如：张三和李四是好朋友，请安排他们坐在一起。王五视力不好，请安排在前排。"></textarea>
+                    </div>
                     
-                    <div id="seat-modification-section" class="seat-modification-section" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                    <div id="seat-modification-section" class="seat-modification-section" style="display: none;">
                         <h3>细微调整座位</h3>
-                        <p>当前人员信息表和上方显示的座位表将作为AI调整的参考。</p>
+                        
                         <textarea id="seat-modification-input" rows="3" placeholder="例如：请将张三和王五调换位置。李四想坐窗边。"></textarea>
-                        <button id="send-seat-modification-button">发送修改指令</button>
+                        
                         <div id="seat-modification-loading" style="display: none;">AI 正在处理修改...</div>
                         <div class="seat-modify-thinking-output"> <!-- 新增：座位微调的思考过程 -->
                             <h3>AI 思考过程...</h3>

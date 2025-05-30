@@ -294,15 +294,55 @@ button:disabled {
 
 .table-generator-section .arrangement-section {
     display: flex;
+    flex-direction: row; /* 子元素横向排列 */
+    gap: 20px; /* 子元素之间的间距 */
+    align-items: flex-start; /* 顶部对齐 */
+}
+
+.arrangement-remarks-wrapper, /* 新的编排备注包装器 */
+#seat-modification-section {
+    flex: 1; /* 每个子元素占据相等的空间 */
+    display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 10px; /* 各自内部子元素的间距 */
+    padding: 15px; /* 内边距 */
+    border: 1px solid #e0e0e0; /* 边框 */
+    border-radius: 8px; /* 圆角 */
+    background-color: #f9f9f9; /* 背景色 */
+    min-width: 0; /* 允许收缩 */
 }
-.table-generator-section .arrangement-section textarea#arrangement-remarks {
+
+/* 确保这些包装器内的标签和文本区域行为正确 */
+.arrangement-remarks-wrapper label,
+#seat-modification-section h3 { /* 对标题使用h3以保持一致性 */
+    margin-bottom: 5px; /* 标签/标题下方的空间 */
+    font-weight: 600;
 }
-.table-generator-section .arrangement-section button#ai-arrange-button {
+
+.arrangement-remarks-wrapper textarea,
+#seat-modification-section textarea {
+    width: 100%; /* 在其容器内占满宽度 */
+    box-sizing: border-box; /* padding和border包含在宽度内 */
+    min-height: 90px; /* 一致的最小高度 */
+}
+
+/* 如果之前#seat-modification-section有特定的边距/内边距/边框覆盖，现在移除它们，除非确实需要 */
+#seat-modification-section {
+    margin-top: 0 !important; 
+    padding-top: 0 !important;
+    border-top: none !important;
+    /* 保持其他需要的样式，或依赖上面的通用样式 */
+    padding: 15px; /* 确保内边距一致 */
+    border: 1px solid #e0e0e0; /* 确保边框一致 */
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+/* ai-arrange-button 现在在 generator-buttons 中，此规则可能不再直接适用或需要调整 */
+/* .table-generator-section .arrangement-section button#ai-arrange-button {
     width: 100%; 
     margin-top: 5px; 
-}
+} */
 
 
 /* Output Areas */

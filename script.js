@@ -13,8 +13,8 @@ const togglePersonnelListButton = document.getElementById('toggle-personnel-list
 const rowsInput = document.getElementById('rows');
 const colsInput = document.getElementById('cols');
 const deskMatesInput = document.getElementById('desk-mates');
-const generateTableButton = document.getElementById('generate-table');
 const tablePreviewDiv = document.getElementById('table-preview');
+// const generateTableButton = document.getElementById('generate-table'); // 按钮已被移除或功能合并
 
 // Sidebar elements
 const settingsSidebar = document.getElementById('settings-sidebar');
@@ -924,43 +924,93 @@ function generateEmptySeatTableMarkdown(rows, cols, deskMates) {
     return markdownTable;
 }
 
-// 生成座位列表表格
-generateTableButton.addEventListener('click', () => {
+// 函数：动态生成和预览座位表 (替换旧的 generateTableButton 逻辑)
+function dynamicGenerateAndPreviewTable() {
     const rows = parseInt(rowsInput.value);
     const cols = parseInt(colsInput.value);
     const deskMates = parseInt(deskMatesInput.value);
-    
+
     if (rows < 1 || cols < 1 || deskMates < 1) {
-        alert('行数、列数和同桌数必须大于0。');
+        tablePreviewDiv.innerHTML = '<p style="color: #aaa;">请输入有效的行数、列数和同桌数。</p>';
+        closeSeatModificationDialog(); // 确保在无效输入时也隐藏
         return;
     }
     if (deskMates > cols) {
-        alert('同桌数不能大于列数。');
+        tablePreviewDiv.innerHTML = '<p style="color: red;">同桌数不能大于列数。</p>';
+        closeSeatModificationDialog(); // 确保在无效输入时也隐藏
         return;
     }
 
     const markdownTable = generateEmptySeatTableMarkdown(rows, cols, deskMates);
-    if (!markdownTable) return; 
+    if (!markdownTable) {
+        tablePreviewDiv.innerHTML = '<p style="color: red;">无法生成座位表预览。</p>';
+        closeSeatModificationDialog();
+        return;
+    }
 
     tablePreviewDiv.innerHTML = marked.parse(markdownTable);
     localStorage.setItem('seat_table_markdown', markdownTable); 
     localStorage.setItem('original_seat_format_markdown', markdownTable); 
     localStorage.removeItem('arranged_seat_table_markdown'); 
 
-    if (seatModificationSection) seatModificationSection.style.display = 'none';
-    if (seatModificationInput) seatModificationInput.value = '';
-    if (seatModificationOutput) {
+    closeSeatModificationDialog(); // 使用新的函数来隐藏细微调整部分及其按钮
+    if (seatModificationInput) seatModificationInput.value = ''; 
+    if (seatModificationOutput) { 
         seatModificationOutput.innerHTML = '';
         seatModificationOutput.style.display = 'none';
     }
-    seatModificationConversationHistory = [];
+    seatModificationConversationHistory = []; 
+}
+
+// 为行数、列数、同桌数输入框添加事件监听器
+rowsInput.addEventListener('input', dynamicGenerateAndPreviewTable);
+colsInput.addEventListener('input', dynamicGenerateAndPreviewTable);
+deskMatesInput.addEventListener('input', dynamicGenerateAndPreviewTable);
+
+// 页面加载时也尝试生成一次，以防有默认值
+document.addEventListener('DOMContentLoaded', () => {
+    dynamicGenerateAndPreviewTable(); 
+    closeSeatModificationDialog(); 
     
-    const totalSeatsElement = document.getElementById('total-seats');
-    if (totalSeatsElement) totalSeatsElement.textContent = `总人数: ${rows * cols}`;
+    // Function to sync heights of personnel info sections with table generator section
+    function syncSectionHeights() {
+        const tableGeneratorSection = document.querySelector('.table-generator-section');
+        // const inputSec = document.querySelector('.input-section');  // 不再需要同步 input-section
+        const outputSecElement = document.querySelector('.output-section');
+        
+        if (!tableGeneratorSection) return;
+        const targetHeight = tableGeneratorSection.offsetHeight;
+
+        // if (inputSec) inputSec.style.minHeight = `${targetHeight}px`; // 移除对 input-section 高度的设置
+        
+        if (outputSecElement) { // outputSectionElement is the .output-section div
+            // Always set its height to match tableGeneratorSection
+            outputSecElement.style.height = `${targetHeight}px`;
+            // If it's collapsed, its internal wrapper might need specific handling if desired
+            // but for now, just ensuring the main output-section matches height.
+        }
+    }
+
+    setTimeout(syncSectionHeights, 150);
+    window.addEventListener('resize', () => setTimeout(syncSectionHeights, 50));
+    if (document.readyState === 'complete') {
+        setTimeout(syncSectionHeights, 500);
+    } else {
+        window.addEventListener('load', () => setTimeout(syncSectionHeights, 200));
+    }
+    if (togglePersonnelListButton) {
+        togglePersonnelListButton.addEventListener('click', () => setTimeout(syncSectionHeights, 50));
+    }
+    const tableGenSectionForObserver = document.querySelector('.table-generator-section');
+    if (tableGenSectionForObserver) {
+        const observer = new MutationObserver(syncSectionHeights);
+        observer.observe(tableGenSectionForObserver, { childList: true, subtree: true, attributes: true, characterData: true });
+    }
 });
 
+
 // AI 智能编排座位
-const aiArrangeButton = document.getElementById('ai-arrange-button');
+const aiArrangeButton = document.getElementById('ai-arrange-button'); // 确保这是正确的按钮ID
 const arrangementRemarksInput = document.getElementById('arrangement-remarks');
 
 // Thinking output elements
@@ -1016,7 +1066,7 @@ aiArrangeButton.addEventListener('click', async () => {
         return;
     }
 
-    if (!seatTableFormat || seatTableFormat.trim() === '') { // Should not happen due to above checks
+    if (!seatTableFormat || seatTableFormat.trim() === '') { 
         alert('座位表格式为空，请先生成或检查设置。');
         return;
     }
@@ -1026,10 +1076,25 @@ aiArrangeButton.addEventListener('click', async () => {
         aiThinkingOutputDiv.classList.remove('thinking-output-visible');
     }
     
-    const originalSeatFormatMarkdownForDisplay = localStorage.getItem('original_seat_format_markdown') || '';
-    if (tablePreviewDiv.innerHTML.trim() === '' && originalSeatFormatMarkdownForDisplay) {
-        tablePreviewDiv.innerHTML = marked.parse(originalSeatFormatMarkdownForDisplay); 
+    if (tablePreviewDiv.innerHTML.trim() === '' || tablePreviewDiv.textContent.includes("请输入有效") || tablePreviewDiv.textContent.includes("无法生成")) {
+        dynamicGenerateAndPreviewTable(); 
+        if (tablePreviewDiv.innerHTML.trim() === '' || tablePreviewDiv.textContent.includes("请输入有效") || tablePreviewDiv.textContent.includes("无法生成")) {
+             alert('AI编排前，请确保行数、列数和同桌数设置有效。');
+             return;
+        }
     }
+    let seatTableFormatToUse = localStorage.getItem('original_seat_format_markdown');
+    if (!seatTableFormatToUse) {
+        dynamicGenerateAndPreviewTable();
+        seatTableFormatToUse = localStorage.getItem('original_seat_format_markdown');
+        if (!seatTableFormatToUse) {
+            alert('无法获取座位表格式，请检查行列及同桌数设置。');
+            aiArrangeButton.disabled = false; 
+            return;
+        }
+    }
+
+
     aiArrangeButton.disabled = true;
 
     const systemPrompt = `
@@ -1049,7 +1114,7 @@ ${remarks}
 - 如果备注中有特定的座位要求，请优先满足这些要求。
 以下是座位表格式，你需要将表格中"座位一，座位二…"的信息替换为人物表中的人物，不修改表格其他内容：
 <座位表格式>
-${seatTableFormat}
+${seatTableFormatToUse}
 </座位表格式>
 - 如果我提供的人物表中的人数不足以填满座位表，请在表格中用"空座位"替代。
 - 如果我提供的人物表中的人数超过了座位表的座位数，并没有被编排进去的人请在表格中用"人物（未被编排）"注明。
@@ -1064,7 +1129,7 @@ ${seatTableFormat}
                 'Authorization': `Bearer ${seatingTaskConfig.apiKey}`
             },
             body: JSON.stringify({
-                model: seatingTaskConfig.modelId, // 使用原始 modelId
+                model: seatingTaskConfig.modelId, 
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: '请根据我提供的信息开始编排座位。' }
@@ -1222,18 +1287,11 @@ function displayOriginalSeatNumbers() {
     tableElement.querySelectorAll('.original-seat-number-bg').forEach(span => span.remove());
 
     const originalSeatFormatMarkdown = localStorage.getItem('original_seat_format_markdown');
-    // const arrangedSeatTableMarkdown = localStorage.getItem('arranged_seat_table_markdown'); // Not strictly needed for this logic
-
-    if (!originalSeatFormatMarkdown) { // Check if original format exists
+    if (!originalSeatFormatMarkdown) { 
         console.warn("displayOriginalSeatNumbers: original_seat_format_markdown not found in localStorage.");
         return;
     }
-    // Also ensure arranged table is in localStorage for consistency, though not directly used for content matching here
-    if (!localStorage.getItem('arranged_seat_table_markdown')) {
-        // console.warn("displayOriginalSeatNumbers: arranged_seat_table_markdown not found. This might be okay if tablePreviewDiv is up-to-date.");
-    }
-
-
+    
     const originalFormatArray = markdownTableToArray(originalSeatFormatMarkdown);
     
     const tbody = tableElement.querySelector('tbody');
@@ -1267,186 +1325,10 @@ function displayOriginalSeatNumbers() {
                         }
                         cell.appendChild(bgNumberSpan);
                     }
+                }
             }
-        }
+        });
     });
-});
-
-// Function to sync heights of personnel info sections with table generator section
-function syncSectionHeights() {
-    const tableGeneratorSection = document.querySelector('.table-generator-section');
-    const inputSection = document.querySelector('.input-section'); // This is the "人员信息表" (personnel info input)
-    const outputSectionElement = document.querySelector('.output-section');
-    
-    if (!tableGeneratorSection) {
-        // console.warn("syncSectionHeights: tableGeneratorSection not found.");
-        return;
-    }
-    const targetHeight = tableGeneratorSection.offsetHeight;
-
-    if (inputSection) {
-        inputSection.style.minHeight = `${targetHeight}px`;
-        // console.log(`Set inputSection minHeight to ${targetHeight}px`);
-    } else {
-        // console.warn("syncSectionHeights: inputSection not found.");
-    }
-
-    if (outputSectionElement && outputSectionElement.classList.contains('personnel-collapsed')) {
-        const collapsedPersonnelListWrapper = outputSectionElement.querySelector('.personnel-list-wrapper');
-        if (collapsedPersonnelListWrapper) {
-            collapsedPersonnelListWrapper.style.minHeight = `${targetHeight}px`;
-            // console.log(`Set collapsedPersonnelListWrapper minHeight to ${targetHeight}px`);
-        } else {
-            // console.warn("syncSectionHeights: collapsedPersonnelListWrapper not found.");
-        }
-    }
-}
-
-// Call syncSectionHeights on specific events
-window.addEventListener('resize', () => {
-    setTimeout(syncSectionHeights, 50); // Debounce or delay slightly
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Initial sync after everything is loaded and rendered
-    setTimeout(syncSectionHeights, 150); // Increased timeout to ensure layout is fully stable
-    // Fallback if an image or something else causes late layout shift
-    if (document.readyState === 'complete') {
-        setTimeout(syncSectionHeights, 500);
-    } else {
-        window.addEventListener('load', () => setTimeout(syncSectionHeights, 200));
-    }
-});
-
-// Function to sync heights of personnel info sections with table generator section
-function syncSectionHeights() {
-    const tableGeneratorSection = document.querySelector('.table-generator-section');
-    const inputSection = document.querySelector('.input-section'); // This is the "人员信息表" (personnel info input)
-    const outputSectionElement = document.querySelector('.output-section');
-    
-    if (!tableGeneratorSection) {
-        // console.warn("syncSectionHeights: tableGeneratorSection not found.");
-        return;
-    }
-    const targetHeight = tableGeneratorSection.offsetHeight;
-
-    if (inputSection) {
-        inputSection.style.minHeight = `${targetHeight}px`;
-        // console.log(`Set inputSection minHeight to ${targetHeight}px`);
-    } else {
-        // console.warn("syncSectionHeights: inputSection not found.");
-    }
-
-    if (outputSectionElement && outputSectionElement.classList.contains('personnel-collapsed')) {
-        const collapsedPersonnelListWrapper = outputSectionElement.querySelector('.personnel-list-wrapper');
-        if (collapsedPersonnelListWrapper) {
-            collapsedPersonnelListWrapper.style.minHeight = `${targetHeight}px`;
-            // console.log(`Set collapsedPersonnelListWrapper minHeight to ${targetHeight}px`);
-        } else {
-            // console.warn("syncSectionHeights: collapsedPersonnelListWrapper not found.");
-        }
-    }
-}
-
-// Call syncSectionHeights on specific events
-window.addEventListener('resize', () => {
-    setTimeout(syncSectionHeights, 50); // Debounce or delay slightly
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Initial sync after everything is loaded and rendered
-    setTimeout(syncSectionHeights, 150); // Increased timeout to ensure layout is fully stable
-    // Fallback if an image or something else causes late layout shift
-    if (document.readyState === 'complete') {
-        setTimeout(syncSectionHeights, 500);
-    } else {
-        window.addEventListener('load', () => setTimeout(syncSectionHeights, 200));
-    }
-});
-
-// Function to sync heights of personnel info sections with table generator section
-function syncSectionHeights() {
-    const tableGeneratorSection = document.querySelector('.table-generator-section');
-    const inputSection = document.querySelector('.input-section'); // This is the "人员信息表" (personnel info input)
-    const outputSectionElement = document.querySelector('.output-section');
-    
-    if (!tableGeneratorSection) {
-        // console.warn("syncSectionHeights: tableGeneratorSection not found.");
-        return;
-    }
-    const targetHeight = tableGeneratorSection.offsetHeight;
-
-    if (inputSection) {
-        inputSection.style.minHeight = `${targetHeight}px`;
-        // console.log(`Set inputSection minHeight to ${targetHeight}px`);
-    } else {
-        // console.warn("syncSectionHeights: inputSection not found.");
-    }
-
-    if (outputSectionElement && outputSectionElement.classList.contains('personnel-collapsed')) {
-        const collapsedPersonnelListWrapper = outputSectionElement.querySelector('.personnel-list-wrapper');
-        if (collapsedPersonnelListWrapper) {
-            collapsedPersonnelListWrapper.style.minHeight = `${targetHeight}px`;
-            // console.log(`Set collapsedPersonnelListWrapper minHeight to ${targetHeight}px`);
-        } else {
-            // console.warn("syncSectionHeights: collapsedPersonnelListWrapper not found.");
-        }
-    }
-}
-
-// Call syncSectionHeights on specific events
-window.addEventListener('resize', () => {
-    setTimeout(syncSectionHeights, 50); // Debounce or delay slightly
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Initial sync after everything is loaded and rendered
-    setTimeout(syncSectionHeights, 150); // Increased timeout to ensure layout is fully stable
-    // Fallback if an image or something else causes late layout shift
-    if (document.readyState === 'complete') {
-        setTimeout(syncSectionHeights, 500);
-    } else {
-        window.addEventListener('load', () => setTimeout(syncSectionHeights, 200));
-    }
-});
-
-// Function to sync heights of personnel info sections with table generator section
-function syncSectionHeights() {
-    const tableGeneratorSection = document.querySelector('.table-generator-section');
-    const inputSection = document.querySelector('.input-section'); // This is the "人员信息表" (personnel info input)
-    const outputSectionElement = document.querySelector('.output-section');
-    
-    if (!tableGeneratorSection) {
-        console.warn("syncSectionHeights: tableGeneratorSection not found.");
-        return;
-    }
-    const targetHeight = tableGeneratorSection.offsetHeight;
-
-    if (inputSection) {
-        inputSection.style.minHeight = `${targetHeight}px`;
-        // console.log(`Set inputSection minHeight to ${targetHeight}px`);
-    } else {
-        // console.warn("syncSectionHeights: inputSection not found.");
-    }
-
-    if (outputSectionElement && outputSectionElement.classList.contains('personnel-collapsed')) {
-        const collapsedPersonnelListWrapper = outputSectionElement.querySelector('.personnel-list-wrapper');
-        if (collapsedPersonnelListWrapper) {
-            collapsedPersonnelListWrapper.style.minHeight = `${targetHeight}px`;
-            // console.log(`Set collapsedPersonnelListWrapper minHeight to ${targetHeight}px`);
-        } else {
-            // console.warn("syncSectionHeights: collapsedPersonnelListWrapper not found.");
-        }
-    }
-}
-
-// Call syncSectionHeights on specific events
-window.addEventListener('resize', syncSectionHeights);
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Initial sync after everything is loaded
-    setTimeout(syncSectionHeights, 100); // Timeout to ensure layout is stable
-});
 }
 
 
@@ -1467,25 +1349,98 @@ if (importSeatTableButton) {
 
         tablePreviewDiv.innerHTML = marked.parse(markdown);
         localStorage.setItem('arranged_seat_table_markdown', markdown); 
-        alert('座位表已成功导入并显示。');
+        localStorage.setItem('original_seat_format_markdown', markdown); 
+
+        const { rows, cols, deskMates } = parseImportedTableStructure(markdown);
+        if (rows && cols && deskMates) {
+            rowsInput.value = rows;
+            colsInput.value = cols;
+            deskMatesInput.value = deskMates;
+            alert(`座位表已成功导入并显示。检测到 ${rows} 行, ${cols} 列, ${deskMates} 同桌。`);
+        } else {
+            alert('座位表已成功导入并显示。未能自动识别行列同桌数，请手动检查。');
+        }
+        
         importSeatTableMarkdownTextarea.value = ''; 
 
         applyGenderColoring(); 
-        displayOriginalSeatNumbers(); // Add call for seat numbers
+        displayOriginalSeatNumbers(); 
         openSeatModificationDialog();
     });
+}
+
+// 函数：尝试从导入的Markdown表格解析结构
+function parseImportedTableStructure(markdown) {
+    const lines = markdown.trim().split('\n');
+    if (lines.length < 3) return {}; 
+
+    const headerLine = lines[0].trim();
+    const dataLines = lines.slice(2).filter(line => line.trim().startsWith('|') && line.trim().endsWith('|'));
+    
+    if (dataLines.length === 0) return {};
+
+    const numRows = dataLines.length;
+
+    const firstRowCells = dataLines[0].slice(1, -1).split('|');
+    let numCols = 0;
+    let maxDeskMates = 1; 
+
+    const headerCells = headerLine.slice(1, -1).split('|').map(cell => cell.trim().toLowerCase());
+    let potentialCols = 0;
+    let deskMateGroups = [];
+    let currentGroupSize = 0;
+
+    for (const cell of headerCells) {
+        if (cell.includes('座位') || cell.trim() !== '') { 
+            potentialCols++;
+            currentGroupSize++;
+        }
+        if (cell.includes('走廊') || cell.trim() === '') { 
+            if (currentGroupSize > 0) {
+                deskMateGroups.push(currentGroupSize);
+            }
+            currentGroupSize = 0;
+        }
+    }
+    if (currentGroupSize > 0) { 
+        deskMateGroups.push(currentGroupSize);
+    }
+
+    if (potentialCols > 0) {
+        numCols = potentialCols;
+        if (deskMateGroups.length > 0) {
+            maxDeskMates = deskMateGroups[0] > 0 ? deskMateGroups[0] : 1;
+        }
+    } else { 
+        numCols = firstRowCells.length; 
+    }
+
+    return { rows: numRows, cols: numCols, deskMates: maxDeskMates };
 }
 
 // Function to open/show the seat modification dialog/section
 function openSeatModificationDialog() {
     if (seatModificationSection) {
         seatModificationSection.style.display = 'flex'; 
+        if (sendSeatModificationButton) {
+            sendSeatModificationButton.style.display = 'inline-block'; 
+        }
         if (seatModificationInput) seatModificationInput.value = ''; 
         if (seatModificationOutput) {
             seatModificationOutput.innerHTML = ''; 
             seatModificationOutput.style.display = 'none';
         }
         seatModificationConversationHistory = []; 
+    }
+}
+
+// Function to hide the seat modification dialog/section and button
+function closeSeatModificationDialog() {
+    if (seatModificationSection) {
+        seatModificationSection.style.display = 'none'; 
+    }
+    if (sendSeatModificationButton) {
+        sendSeatModificationButton.style.display = 'none'; 
     }
 }
 
@@ -1600,7 +1555,7 @@ ${seatMappingInfo}
                     'Authorization': `Bearer ${seatModificationTaskConfig.apiKey}`
                 },
                 body: JSON.stringify({
-                    model: seatModificationTaskConfig.modelId, // 使用原始 modelId
+                    model: seatModificationTaskConfig.modelId, 
                     messages: messagesForAPI,
                     stream: true 
                 })
@@ -1661,7 +1616,7 @@ ${seatMappingInfo}
                 tablePreviewDiv.innerHTML = marked.parse(newSeatTableMarkdown); 
                 localStorage.setItem('arranged_seat_table_markdown', newSeatTableMarkdown); 
                 applyGenderColoring();
-                displayOriginalSeatNumbers(); // Add call for seat numbers
+                displayOriginalSeatNumbers(); 
                 if (seatModificationOutput) {
                     seatModificationOutput.innerHTML = `<strong>已应用修改:</strong><br><pre>${changesSummary}</pre>`;
                 }

@@ -69,10 +69,10 @@
                 <div class="arrangement-section">
                     <div class="arrangement-remarks-wrapper">
                         <div class="section-title-button-group">
-                            <label for="arrangement-remarks">编排备注:</label>
-                            <button id="ai-arrange-button" class="inline-button">编排</button>
+                            <label for="arrangement-remarks">编排备注</label>
+                            <button id="ai-arrange-button" class="inline-button">AI编排</button>
                         </div>
-                        <textarea id="arrangement-remarks" rows="3" placeholder="输入需要 AI 考虑的编排要求，例如：张三和李四是好朋友，请安排他们坐在一起。王五视力不好，请安排在前排。"></textarea>
+                        <textarea id="arrangement-remarks" rows="3" placeholder="输入需要 AI 考虑的编排要求，例如：王五视力不好，请安排在前排。"></textarea>
                     </div>
                     
                     <div id="seat-modification-section" class="seat-modification-section" style="display: none;">
@@ -80,20 +80,24 @@
                             <h3>细微调整座位</h3>
                             <button id="send-seat-modification-button" class="inline-button" style="display: none;">发送</button>
                         </div>
-                        <textarea id="seat-modification-input" rows="3" placeholder="例如：请将张三和王五调换位置。李四想坐窗边。"></textarea>
+                        <textarea id="seat-modification-input" rows="3" placeholder="输入需要微调的部分，例如：请将张三和王五调换位置。李四想坐窗边。"></textarea>
                         
                         <div id="seat-modification-loading" style="display: none;">AI 正在处理修改...</div>
-                        <div class="seat-modify-thinking-output"> <!-- 新增：座位微调的思考过程 -->
-                            <h3>AI 思考过程...</h3>
-                            <pre></pre>
-                        </div>
-                        <div id="seat-modification-output" style="margin-top:10px; padding:10px; border:1px dashed #ccc; border-radius:4px; display:none;"></div>
+                        <!-- seat-modify-thinking-output 和 seat-modification-output 将被移动 -->
                     </div>
                 </div>
-                <div id="ai-thinking-output"> <!-- 这个是座位编排的思考过程，保留id，但样式会通过class统一 -->
-                    <h3>AI 思考过程...</h3>
-                    <pre></pre> <!-- 用于显示思考过程 -->
+                <!-- 座位编排的思考过程 -->
+                <div id="ai-thinking-output"> 
+                    <h3>AI 编排思考过程...</h3>
+                    <pre></pre> 
                 </div>
+                <!-- 座位微调的思考过程 -->
+                <div class="seat-modify-thinking-output" style="display: none;"> 
+                    <h3>AI 微调思考过程...</h3>
+                    <pre></pre>
+                </div>
+                <!-- 座位微调结果 -->
+                <div id="seat-modification-output" style="margin-top:10px; padding:10px; border:1px dashed #ccc; border-radius:4px; display:none;"></div>
                 <!-- arrangement-actions div removed as its content moved -->
                 <div id="table-preview"></div>
 

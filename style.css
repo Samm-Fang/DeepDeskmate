@@ -318,16 +318,20 @@ button:disabled {
 #seat-modification-section .section-title-button-group {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: baseline; /* 修改对齐方式为基线对齐 */
     margin-bottom: 8px; /* 标题组和下方文本框的间距 */
 }
 
 .arrangement-remarks-wrapper .section-title-button-group label,
 #seat-modification-section .section-title-button-group h3 {
+    margin-top: 0; /* 确保顶部无外边距 */
     margin-bottom: 0; /* 移除label/h3自身的下边距，由父级控制 */
     font-weight: 600;
     font-size: 1.1rem; /* 统一标题字体大小 */
     color: #34495e;   /* 统一标题颜色 */
+    line-height: 1.5; /* 统一行高 */
+    padding-top: 5px; /* 添加一些内边距以帮助对齐 */
+    padding-bottom: 5px; /* 添加一些内边距以帮助对齐 */
 }
 
 #seat-modification-section .section-title-button-group h3 {
@@ -339,6 +343,7 @@ button:disabled {
     font-size: 0.9rem;
     margin-left: 10px; /* 按钮和标题的间距 */
     flex-shrink: 0; /* 防止按钮被压缩 */
+    align-self: center; /* 尝试让按钮在交叉轴居中，配合 baseline 可能有帮助 */
 }
 
 
@@ -478,6 +483,7 @@ button:disabled {
     border: 2px dashed #cccccc; 
     border-radius: 8px;
     margin-top: 10px;
+    margin-bottom: 15px; /* 为移动后的元素添加底部外边距 */
     display: none; 
     opacity: 0; 
     transition: opacity 0.3s ease-in-out; 

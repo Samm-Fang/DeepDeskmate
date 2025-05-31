@@ -2031,3 +2031,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// --- 自动滚动功能 ---
+function setupAutoScrollForPreElement(preElement) {
+    if (!preElement) return () => {}; // 返回一个空函数，如果元素不存在
+    let userHasScrolledUp = false;
+
+    preElement.addEventListener('scroll', () => {
+        // 如果滚动条不在底部 (允许一些像素误差)，则认为用户已向上滚动
+        // 预留20像素的容差
+        if (preElement.scrollTop + preElement.clientHeight < preElement.scrollHeight - 20) {
+            userHasScrolledUp = true;
+        } else {
+            userHasScrolledUp = false;
+        }
+    });
+
+    // 返回一个函数，用于在内容更新后检查是否需要滚动
+    return function autoScrollIfEnabled() {
+        if (!userHasScrolledUp) {
+            preElement.scrollTop = preElement.scrollHeight;
+        }
+    };
+}
+
+// 为每个思考过程的 pre 元素设置自动滚动
+const personnelThinkingAutoScroll = personnelThinkingPre ? setupAutoScrollForPreElement(personnelThinkingPre) : () => {};
+const aiThinkingAutoScroll = aiThinkingPre ? setupAutoScrollForPreElement(aiThinkingPre) : () => {};
+const seatModifyThinkingAutoScroll = seatModifyThinkingPre ? setupAutoScrollForPreElement(seatModifyThinkingPre) : () => {};

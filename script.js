@@ -1,3 +1,42 @@
+// Function to show in-page notifications
+function showInPageNotification(message, type = 'info') {
+    const notificationArea = document.getElementById('in-page-notification-area');
+    if (!notificationArea) {
+        // If the area doesn't exist, create it dynamically.
+        // This is a fallback, ideally it should be in the HTML.
+        const newNotificationArea = document.createElement('div');
+        newNotificationArea.id = 'in-page-notification-area';
+        document.body.appendChild(newNotificationArea);
+        // Call again, now that the area should exist.
+        // Use a timeout to allow the DOM to update.
+        setTimeout(() => showInPageNotification(message, type), 0);
+        return;
+    }
+
+    const notificationId = `notification-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const notificationDiv = document.createElement('div');
+    notificationDiv.id = notificationId;
+    notificationDiv.className = `in-page-notification ${type}`;
+    notificationDiv.textContent = message;
+
+    notificationArea.appendChild(notificationDiv);
+
+    // Animate in (requires CSS for .in-page-notification.show)
+    setTimeout(() => {
+        notificationDiv.classList.add('show');
+    }, 50); 
+
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        notificationDiv.classList.remove('show');
+        // Remove the element after the fade-out animation completes
+        setTimeout(() => {
+            const el = document.getElementById(notificationId);
+            if (el) el.remove();
+        }, 500); // Match this duration with CSS transition duration
+    }, 5000);
+}
+
 // const apiKeyInput = document.getElementById('api-key');
 // const saveKeyButton = document.getElementById('save-key');
 const personDescriptionInput = document.getElementById('person-description');
@@ -18,10 +57,24 @@ const tablePreviewDiv = document.getElementById('table-preview');
 
 // Sidebar elements
 const settingsSidebar = document.getElementById('settings-sidebar');
-// const openSettingsButton = document.getElementById('open-settings-button'); // 旧按钮，已在HTML中移除
-const sidebarToggleButton = document.getElementById('sidebar-toggle-button'); // 新的左下角按钮
-const appWrapper = document.querySelector('.app-wrapper'); // App wrapper for content shift
-const mainContainer = document.querySelector('.container'); // Main content container
+const sidebarToggleButton = document.getElementById('sidebar-toggle-button'); // Settings button
+const appWrapper = document.querySelector('.app-wrapper');
+const mainContainer = document.querySelector('.container'); // Main content area that shifts
+const containerWrapper = document.querySelector('.container-wrapper'); // Parent of .container and buttons
+
+// Agent Sidebar elements
+const agentSidebar = document.getElementById('agent-sidebar');
+const agentToggleButton = document.getElementById('open-agent-button'); // Corrected ID based on HTML
+const agentChatMessages = document.getElementById('agent-chat-messages');
+const agentChatInput = document.getElementById('agent-chat-input');
+const agentSendButton = document.getElementById('agent-send-button');
+const agentClearButton = document.getElementById('agent-clear-button');
+const agentSystemPromptTextarea = document.getElementById('agent-system-prompt');
+const agentSaveConfigButton = document.getElementById('agent-save-config-button');
+
+// Agent功能相关变量
+let agentConversationHistory = []; // Agent对话历史
+let agentSystemPrompt = ''; // Agent系统提示词
 
 // DeepSeek Quick Config
 const deepseekApiKeyInput = document.getElementById('deepseek-api-key');
@@ -49,6 +102,13 @@ const seatModifyModelDropdown = document.getElementById('seat-modify-model-dropd
 const seatModifyModelSearchInput = seatModifyModelDropdown ? seatModifyModelDropdown.querySelector('.model-search-input') : null;
 const seatModifyModelOptionsList = seatModifyModelDropdown ? seatModifyModelDropdown.querySelector('.custom-options-list') : null;
 const seatModifyModelSelectValue = document.getElementById('seat-modify-model-select-value');
+
+// Agent驱动模型选择元素 (确保这些ID与HTML中的新部分匹配)
+const agentModelTrigger = document.getElementById('agent-model-trigger'); 
+const agentModelDropdown = document.getElementById('agent-model-dropdown');
+const agentModelSearchInput = agentModelDropdown ? agentModelDropdown.querySelector('.model-search-input') : null;
+const agentModelOptionsList = agentModelDropdown ? agentModelDropdown.querySelector('.custom-options-list') : null;
+const agentModelSelectValue = document.getElementById('agent-model-select-value');
 
 const saveModelUsageButton = document.getElementById('save-model-usage-button');
 const activeConfigDisplayDiv = document.getElementById('active-config-display'); // Re-purposed for showing current task model
@@ -80,7 +140,8 @@ let modelUsageSettingsStored = localStorage.getItem('llm_model_usage_settings');
 let modelUsageSettings = modelUsageSettingsStored ? JSON.parse(modelUsageSettingsStored) : {
     personnel: null,
     seating: null,
-    seat_modification: null
+    seat_modification: null,
+    agent: null // 新增Agent驱动模型配置
 };
 
 // 页面加载时显示已保存的人员信息表
@@ -183,7 +244,8 @@ function populateModelSelects() {
     const customSelects = [
         { list: infoModelOptionsList, valueInput: infoModelSelectValue, trigger: infoModelTrigger, currentSavedValue: modelUsageSettings.personnel },
         { list: seatingModelOptionsList, valueInput: seatingModelSelectValue, trigger: seatingModelTrigger, currentSavedValue: modelUsageSettings.seating },
-        { list: seatModifyModelOptionsList, valueInput: seatModifyModelSelectValue, trigger: seatModifyModelTrigger, currentSavedValue: modelUsageSettings.seat_modification }
+        { list: seatModifyModelOptionsList, valueInput: seatModifyModelSelectValue, trigger: seatModifyModelTrigger, currentSavedValue: modelUsageSettings.seat_modification },
+        { list: agentModelOptionsList, valueInput: agentModelSelectValue, trigger: agentModelTrigger, currentSavedValue: modelUsageSettings.agent } // 新增Agent模型选择
     ];
 
     customSelects.forEach(cs => {
@@ -234,6 +296,7 @@ function loadModelUsage() {
     if (infoModelSelectValue) infoModelSelectValue.value = modelUsageSettings.personnel || '';
     if (seatingModelSelectValue) seatingModelSelectValue.value = modelUsageSettings.seating || '';
     if (seatModifyModelSelectValue) seatModifyModelSelectValue.value = modelUsageSettings.seat_modification || '';
+    if (agentModelSelectValue) agentModelSelectValue.value = modelUsageSettings.agent || ''; // 新增Agent模型加载
     
     populateModelSelects(); // This will now also update trigger texts
     updateActiveTaskModelDisplay('personnel'); 
@@ -243,8 +306,9 @@ function saveModelUsage() {
     modelUsageSettings.personnel = infoModelSelectValue.value;
     modelUsageSettings.seating = seatingModelSelectValue.value;
     modelUsageSettings.seat_modification = seatModifyModelSelectValue.value;
+    modelUsageSettings.agent = agentModelSelectValue.value; // 新增Agent模型保存
     saveModelUsageSettings();
-    alert('模型使用选择已保存！');
+    showInPageNotification('模型使用选择已保存！', 'success');
     // updateActiveTaskModelDisplay needs to know which task type's model to display.
     // Defaulting to 'personnel' or the last interacted one.
     // For simplicity, let's assume 'personnel' or rely on currentDisplayedTaskType if it's set.
@@ -271,6 +335,7 @@ function updateActiveTaskModelDisplay(taskType) {
             if (taskType === 'personnel') taskName = '信息整理';
             else if (taskType === 'seating') taskName = '座位表生成';
             else if (taskType === 'seat_modification') taskName = '座位微调';
+            else if (taskType === 'agent') taskName = 'Agent驱动'; // 新增Agent任务类型
             
             activeConfigStrongElement.textContent = `${provider.name || '未命名提供商'} - ${modelName}`;
             activeConfigDisplayDiv.querySelector('p').textContent = `当前${taskName}模型: `;
@@ -287,7 +352,7 @@ function updateActiveTaskModelDisplay(taskType) {
 
 
 // --- 获取具体任务的模型配置 ---
-function getModelConfig(taskType) { // taskType: 'personnel', 'seating', 'seat_modification'
+function getModelConfig(taskType) { // taskType: 'personnel', 'seating', 'seat_modification', 'agent'
     const selectedModelString = modelUsageSettings[taskType];
     if (!selectedModelString) {
         updateActiveTaskModelDisplay(taskType); // Show "未选择"
@@ -320,20 +385,82 @@ function getModelConfig(taskType) { // taskType: 'personnel', 'seating', 'seat_m
 
 // --- 事件监听器 ---
 
-// 新的侧边栏切换逻辑
-if (sidebarToggleButton && settingsSidebar && mainContainer) {
-    sidebarToggleButton.addEventListener('click', (event) => {
-        event.stopPropagation(); 
-        const isOpen = settingsSidebar.classList.toggle('open');
-        mainContainer.classList.toggle('sidebar-open-content-shift', isOpen);
+// --- Sidebar Toggle Logic ---
+
+function manageSidebarState() {
+    const isSettingsOpen = settingsSidebar.classList.contains('open');
+    const isAgentOpen = agentSidebar.classList.contains('open');
+    const anySidebarOpen = isSettingsOpen || isAgentOpen;
+    const sidebarWidth = 350; // px, should match CSS
+    const buttonOffset = 20; // px
+
+    console.log(`manageSidebarState: SettingsOpen=${isSettingsOpen}, AgentOpen=${isAgentOpen}, AnyOpen=${anySidebarOpen}`);
+
+    if (anySidebarOpen) {
+        // mainContainer.classList.add('sidebar-open-content-shift'); // No longer using class for margin
+        mainContainer.style.width = `calc(100% - ${sidebarWidth}px)`;
+        mainContainer.style.marginRight = `${sidebarWidth}px`; // Keep margin for spacing if needed, or remove if width alone is enough
         
-        if (isOpen) {
-            sidebarToggleButton.style.right = 'calc(350px + 20px)';
-        } else {
-            sidebarToggleButton.style.right = '20px';
+        if (sidebarToggleButton) sidebarToggleButton.style.right = `${buttonOffset + sidebarWidth}px`;
+        if (agentToggleButton) agentToggleButton.style.right = `${buttonOffset + sidebarWidth}px`;
+        console.log(`   mainContainer width set to: calc(100% - ${sidebarWidth}px), marginRight to ${sidebarWidth}px`);
+    } else {
+        // mainContainer.classList.remove('sidebar-open-content-shift');
+        mainContainer.style.width = '100%';
+        mainContainer.style.marginRight = '0px';
+        
+        if (sidebarToggleButton) sidebarToggleButton.style.right = `${buttonOffset}px`;
+        if (agentToggleButton) agentToggleButton.style.right = `${buttonOffset}px`;
+        console.log('   mainContainer width set to: 100%, marginRight to 0px');
+    }
+    console.log('   sidebarToggleButton right:', sidebarToggleButton ? sidebarToggleButton.style.right : 'N/A');
+    console.log('   agentToggleButton right:', agentToggleButton ? agentToggleButton.style.right : 'N/A');
+}
+
+if (sidebarToggleButton && settingsSidebar && mainContainer && agentSidebar) {
+    sidebarToggleButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const isSettingsCurrentlyOpen = settingsSidebar.classList.contains('open');
+        
+        if (agentSidebar.classList.contains('open')) {
+            agentSidebar.classList.remove('open'); // Close other sidebar
         }
+        settingsSidebar.classList.toggle('open');
+        manageSidebarState();
     });
 }
+
+if (agentToggleButton && agentSidebar && mainContainer && settingsSidebar) {
+    agentToggleButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const isAgentCurrentlyOpen = agentSidebar.classList.contains('open');
+
+        if (settingsSidebar.classList.contains('open')) {
+            settingsSidebar.classList.remove('open'); // Close other sidebar
+        }
+        agentSidebar.classList.toggle('open');
+        manageSidebarState();
+    });
+}
+
+// Close sidebars if clicking outside
+document.addEventListener('click', (event) => {
+    let stateChanged = false;
+    if (settingsSidebar.classList.contains('open') && 
+        !settingsSidebar.contains(event.target) && !sidebarToggleButton.contains(event.target)) {
+        settingsSidebar.classList.remove('open');
+        stateChanged = true;
+    }
+    if (agentSidebar.classList.contains('open') && 
+        !agentSidebar.contains(event.target) && !agentToggleButton.contains(event.target)) {
+        agentSidebar.classList.remove('open');
+        stateChanged = true;
+    }
+
+    if (stateChanged) {
+        manageSidebarState();
+    }
+});
 
 
 // 提供商配置事件
@@ -432,7 +559,7 @@ if (providerListDiv) {
             const currentProvider = providers[fetchProviderIndex]; // Use correct provider object
 
             if (!currentProvider.baseURL || !currentProvider.apiKey) {
-                alert('请先为此提供商填写 Base URL 和 API Key。');
+                showInPageNotification('请先为此提供商填写 Base URL 和 API Key。', 'warning');
                 return;
             }
             target.disabled = true;
@@ -450,10 +577,10 @@ if (providerListDiv) {
                 currentProvider.enabledModelIds = []; 
                 saveProviders();
                 renderProviders(); 
-                alert(`为 "${currentProvider.name || `提供商 #${fetchProviderIndex + 1}`}" 成功获取 ${currentProvider.availableModels.length} 个模型。请在列表中手动勾选需要启用的模型。`);
+                showInPageNotification(`为 "${currentProvider.name || `提供商 #${fetchProviderIndex + 1}`}" 成功获取 ${currentProvider.availableModels.length} 个模型。请在列表中手动勾选需要启用的模型。`, 'success');
             } catch (error) {
                 console.error('获取模型列表时出错:', error);
-                alert(`获取模型列表失败: ${error.message}`);
+                showInPageNotification(`获取模型列表失败: ${error.message}`, 'error');
             } finally {
                 target.disabled = false;
                 target.textContent = '获取模型列表';
@@ -468,7 +595,7 @@ if (providerListDiv) {
                 });
                 saveProviders();
                 renderProviders(); 
-                alert('手动模型ID已更新。');
+                showInPageNotification('手动模型ID已更新。', 'success');
             }
         } else if (target.classList.contains('remove-provider')) {
             if (confirm(`确定要移除 "${provider.name || `提供商 #${providerIndex + 1}`}" 吗？`)) {
@@ -502,7 +629,7 @@ if (quickConfigDeepseekButton) {
     quickConfigDeepseekButton.addEventListener('click', () => {
         const apiKey = deepseekApiKeyInput.value.trim();
         if (!apiKey) {
-            alert('请输入 DeepSeek API Key。');
+            showInPageNotification('请输入 DeepSeek API Key。', 'warning');
             return;
         }
 
@@ -536,11 +663,12 @@ if (quickConfigDeepseekButton) {
 
         modelUsageSettings.personnel = `${deepSeekProviderId}/deepseek-chat`;
         modelUsageSettings.seating = `${deepSeekProviderId}/deepseek-reasoner`; 
-        modelUsageSettings.seat_modification = `${deepSeekProviderId}/deepseek-chat`; 
+        modelUsageSettings.seat_modification = `${deepSeekProviderId}/deepseek-chat`;
+        modelUsageSettings.agent = `${deepSeekProviderId}/deepseek-reasoner`; // Agent驱动模型默认使用deepseek-reasoner 
         saveModelUsageSettings();
         loadModelUsage(); 
 
-        alert('DeepSeek 模型已快速配置并选定用于相关任务！');
+        showInPageNotification('DeepSeek 模型已快速配置并选定用于相关任务！', 'success');
         deepseekApiKeyInput.value = '';
     });
 }
@@ -557,20 +685,22 @@ sendDescriptionButton.addEventListener('click', async () => {
     const personnelTaskConfig = getModelConfig('personnel');
 
     if (!personnelTaskConfig) {
-        alert('请在侧边栏"使用模型选择"中为"信息整理"任务选择一个模型。');
+        showInPageNotification('请在侧边栏"使用模型选择"中为"信息整理"任务选择一个模型。', 'warning');
         return;
     }
     if (!personnelTaskConfig.baseURL || !personnelTaskConfig.modelId || !personnelTaskConfig.apiKey) {
-        alert('选择的"信息整理"模型配置不完整 (缺少Base URL, Model ID, 或 API Key)。请检查提供商配置。');
+        showInPageNotification('选择的"信息整理"模型配置不完整 (缺少Base URL, Model ID, 或 API Key)。请检查提供商配置。', 'warning');
         return;
     }
 
     if (!description) {
-        alert('请输入人物描述。');
+        showInPageNotification('请输入人物描述。', 'warning');
         return;
     }
 
-    loadingIndicator.style.display = 'block';
+    if (loadingIndicator && typeof loadingIndicator.style === 'object' && loadingIndicator.style !== null) {
+        loadingIndicator.style.display = 'block';
+    }
     markdownOutputDiv.innerHTML = ''; 
     sendDescriptionButton.disabled = true;
 
@@ -633,25 +763,79 @@ ${personnelDataToMarkdown(personnelData)}
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
-        let accumulatedContent = '';
-        let fullResponse = '';
+        let textBeforeChanges = ""; 
+        let changesBlockStreamContent = ""; 
+        let inChangesBlock = false;
+        let fullResponseForHistory = ""; 
+        let unprocessedLinePart = ""; // Stores incomplete line from previous chunk
+
+        markdownOutputDiv.textContent = ''; 
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+            let jsonDataForLoopDoneCheck;
 
-            for (const line of lines) {
+            for (const line of chunk.split('\n')) { // Process each line from the raw chunk
                 if (line.startsWith('data: ')) {
                     const jsonData = line.substring(6).trim();
+                    jsonDataForLoopDoneCheck = jsonData;
                     if (jsonData === '[DONE]') break;
+
                     try {
                         const parsedData = JSON.parse(jsonData);
                         const delta = parsedData.choices[0]?.delta;
-                        const reasoningContent = delta?.reasoning_content || delta?.reasoning; 
+                        const reasoningContent = delta?.reasoning_content || delta?.reasoning;
                         const outputContent = delta?.content;
+
+                        if (outputContent) {
+                            fullResponseForHistory += outputContent;
+
+                            if (!inChangesBlock) {
+                                if (outputContent.includes('<changes>')) {
+                                    const parts = outputContent.split('<changes>');
+                                    textBeforeChanges += parts[0];
+                                    changesBlockStreamContent = parts[1] || '';
+                                    inChangesBlock = true;
+                                    markdownOutputDiv.textContent = textBeforeChanges + "<changes>" + changesBlockStreamContent.split('</changes>')[0];
+                                } else {
+                                    textBeforeChanges += outputContent;
+                                    markdownOutputDiv.textContent = textBeforeChanges;
+                                }
+                            } else {
+                                changesBlockStreamContent += outputContent;
+                                // Display raw stream within <changes>
+                                markdownOutputDiv.textContent = textBeforeChanges + "<changes>" + changesBlockStreamContent.split('</changes>')[0];
+                                
+                                // Process complete lines for real-time table update
+                                let currentProcessingContent = unprocessedLinePart + changesBlockStreamContent;
+                                if (fullResponseForHistory.includes('</changes>')) { // If end tag seen anywhere in full history
+                                    currentProcessingContent = currentProcessingContent.split('</changes>')[0];
+                                }
+
+                                const instructionLines = currentProcessingContent.split('\n');
+                                unprocessedLinePart = instructionLines.pop() || ""; // Last part might be incomplete
+
+                                for (const instructionLine of instructionLines) {
+                                    if (instructionLine.trim()) {
+                                        if (applySinglePersonnelChange(instructionLine.trim())) {
+                                            renderPersonnelTable();
+                                        }
+                                    }
+                                }
+                                // If the stream has ended (or </changes> was in this chunk), process any remaining part
+                                if (jsonData === '[DONE]' || (outputContent && outputContent.includes('</changes>'))) {
+                                    if (unprocessedLinePart.trim()) {
+                                        if (applySinglePersonnelChange(unprocessedLinePart.trim())) {
+                                            renderPersonnelTable();
+                                        }
+                                        unprocessedLinePart = ""; 
+                                    }
+                                }
+                            }
+                        }
 
                         if (reasoningContent && personnelThinkingOutputDiv && personnelThinkingPre) {
                             personnelThinkingPre.textContent += reasoningContent;
@@ -660,32 +844,18 @@ ${personnelDataToMarkdown(personnelData)}
                             } else {
                                 personnelThinkingOutputDiv.classList.remove('thinking-output-visible');
                             }
+                            personnelThinkingAutoScroll();
                         }
 
-                        if (outputContent) {
-                            fullResponse += outputContent; 
-                            if (fullResponse.includes('<changes>')) {
-                                if (personnelThinkingOutputDiv && personnelThinkingPre.textContent.trim() === '' && !reasoningContent) { 
-                                     personnelThinkingOutputDiv.classList.remove('thinking-output-visible');
-                                }
-                                const changesBlockMatch = fullResponse.match(/<changes>([\s\S]*)/i);
-                                if (changesBlockMatch) {
-                                    markdownOutputDiv.textContent = changesBlockMatch[1].replace(/<\/changes>[\s\S]*/i, '');
-                                }
-                            } else if (!reasoningContent) { 
-                                accumulatedContent += outputContent; 
-                                markdownOutputDiv.textContent = accumulatedContent; 
-                            }
-                        }
                     } catch (e) {
                         console.error('解析人员信息 SSE 数据块时出错:', e, '数据块:', jsonData);
                     }
                 }
             }
-             if (typeof jsonData !== 'undefined' && jsonData === '[DONE]') break;
+            if (typeof jsonDataForLoopDoneCheck !== 'undefined' && jsonDataForLoopDoneCheck === '[DONE]') break;
         }
-
-        const changesMatch = fullResponse.match(/<changes>([\s\S]*?)<\/changes>/i); // Use fullResponse
+        // Final processing uses fullResponseForHistory
+        const changesMatch = fullResponseForHistory.match(/<changes>([\s\S]*?)<\/changes>/i);
         if (changesMatch && changesMatch[1]) {
             const changesContent = changesMatch[1].trim();
             if (changesContent && changesContent !== '没有变化') {
@@ -720,7 +890,9 @@ ${personnelDataToMarkdown(personnelData)}
             conversationHistory.pop();
         }
     } finally {
-        loadingIndicator.style.display = 'none';
+        if (loadingIndicator && typeof loadingIndicator.style === 'object' && loadingIndicator.style !== null) {
+            loadingIndicator.style.display = 'none';
+        }
         sendDescriptionButton.disabled = false;
         renderPersonnelTable();
         if (personnelThinkingOutputDiv && personnelThinkingPre && personnelThinkingPre.textContent.trim() === '') {
@@ -736,7 +908,7 @@ clearPersonnelTableButton.addEventListener('click', () => {
     localStorage.removeItem('user_descriptions'); 
     conversationHistory = []; 
     renderPersonnelTable();
-    alert('人员信息表已清除。');
+    showInPageNotification('人员信息表已清除。', 'info');
 });
 
 // 函数：更新人员信息表格（处理AI返回的修改）
@@ -782,6 +954,46 @@ function parseMarkdownTableRow(markdownLine) {
         return person;
     }
     return null; 
+}
+
+// 函数：实时应用单条人员信息变更指令
+function applySinglePersonnelChange(lineInstruction) {
+    let changeApplied = false;
+    if (lineInstruction.startsWith('[新增]')) {
+        const markdownLine = lineInstruction.substring('[新增]'.length).trim();
+        const person = parseMarkdownTableRow(markdownLine);
+        if (person && person['人物']) {
+            // 避免重复添加（尽管在流式处理中，如果AI不重复发送指令，这可能不是必需的）
+            if (!personnelData.find(p => p['人物'] === person['人物'])) {
+                 personnelData.push(person);
+                 changeApplied = true;
+            }
+        }
+    } else if (lineInstruction.startsWith('[修改]')) {
+        const markdownLine = lineInstruction.substring('[修改]'.length).trim();
+        const updatedPerson = parseMarkdownTableRow(markdownLine);
+        if (updatedPerson && updatedPerson['人物']) {
+            const existingPersonIndex = personnelData.findIndex(p => p['人物'] === updatedPerson['人物']);
+            if (existingPersonIndex !== -1) {
+                personnelData[existingPersonIndex] = updatedPerson;
+                changeApplied = true;
+            } else {
+                 // 如果AI指示修改但人员不存在，则视为新增
+                 personnelData.push(updatedPerson);
+                 changeApplied = true;
+            }
+        }
+    } else if (lineInstruction.startsWith('[删除]')) {
+        const personName = lineInstruction.substring('[删除]'.length).trim();
+        if (personName) {
+            const initialLength = personnelData.length;
+            personnelData = personnelData.filter(p => p['人物'] !== personName);
+            if (personnelData.length < initialLength) {
+                changeApplied = true;
+            }
+        }
+    }
+    return changeApplied;
 }
 
 // 函数：将人员数据数组转换为 Markdown 表格
@@ -1023,6 +1235,10 @@ const personnelThinkingPre = personnelThinkingOutputDiv ? personnelThinkingOutpu
 const seatModifyThinkingOutputDiv = document.querySelector('.seat-modify-thinking-output');
 const seatModifyThinkingPre = seatModifyThinkingOutputDiv ? seatModifyThinkingOutputDiv.querySelector('pre') : null;
 
+// Agent Thinking Output Elements - No longer a separate div, thinking will be part of the message
+// const agentThinkingOutputDiv = document.getElementById('agent-thinking-output'); // Removed
+// const agentThinkingPre = agentThinkingOutputDiv ? agentThinkingOutputDiv.querySelector('pre') : null; // Removed
+
 
 // AI 智能编排座位
 aiArrangeButton.addEventListener('click', async () => {
@@ -1034,17 +1250,17 @@ aiArrangeButton.addEventListener('click', async () => {
     const currentDeskMates = parseInt(deskMatesInput.value);
 
     if (currentRows < 1 || currentCol < 1 || currentDeskMates < 1) {
-        alert('AI编排前，请确保行数、列数和同桌数均大于0。');
+        showInPageNotification('AI编排前，请确保行数、列数和同桌数均大于0。', 'warning');
         return;
     }
     if (currentDeskMates > currentCol) {
-        alert('AI编排前，请确保同桌数不大于列数。');
+        showInPageNotification('AI编排前，请确保同桌数不大于列数。', 'warning');
         return;
     }
 
     const currentEmptyTableMarkdown = generateEmptySeatTableMarkdown(currentRows, currentCol, currentDeskMates);
     if (!currentEmptyTableMarkdown) {
-        alert('无法生成座位表结构，请检查行列及同桌数设置。');
+        showInPageNotification('无法生成座位表结构，请检查行列及同桌数设置。', 'error');
         return;
     }
     localStorage.setItem('original_seat_format_markdown', currentEmptyTableMarkdown);
@@ -1053,21 +1269,21 @@ aiArrangeButton.addEventListener('click', async () => {
     const seatingTaskConfig = getModelConfig('seating');
 
     if (!seatingTaskConfig) {
-        alert('请在侧边栏"使用模型选择"中为"座位表生成"任务选择一个模型。');
+        showInPageNotification('请在侧边栏"使用模型选择"中为"座位表生成"任务选择一个模型。', 'warning');
         return;
     }
     if (!seatingTaskConfig.baseURL || !seatingTaskConfig.modelId || !seatingTaskConfig.apiKey) {
-        alert('选择的"座位表生成"模型配置不完整。请检查提供商配置。');
+        showInPageNotification('选择的"座位表生成"模型配置不完整。请检查提供商配置。', 'warning');
         return;
     }
 
     if (!personnelTable || personnelTable.trim() === '') {
-        alert('请先生成人员信息表。');
+        showInPageNotification('请先生成人员信息表。', 'warning');
         return;
     }
 
     if (!seatTableFormat || seatTableFormat.trim() === '') { 
-        alert('座位表格式为空，请先生成或检查设置。');
+        showInPageNotification('座位表格式为空，请先生成或检查设置。', 'warning');
         return;
     }
 
@@ -1079,7 +1295,7 @@ aiArrangeButton.addEventListener('click', async () => {
     if (tablePreviewDiv.innerHTML.trim() === '' || tablePreviewDiv.textContent.includes("请输入有效") || tablePreviewDiv.textContent.includes("无法生成")) {
         dynamicGenerateAndPreviewTable(); 
         if (tablePreviewDiv.innerHTML.trim() === '' || tablePreviewDiv.textContent.includes("请输入有效") || tablePreviewDiv.textContent.includes("无法生成")) {
-             alert('AI编排前，请确保行数、列数和同桌数设置有效。');
+             showInPageNotification('AI编排前，请确保行数、列数和同桌数设置有效。', 'warning');
              return;
         }
     }
@@ -1088,7 +1304,7 @@ aiArrangeButton.addEventListener('click', async () => {
         dynamicGenerateAndPreviewTable();
         seatTableFormatToUse = localStorage.getItem('original_seat_format_markdown');
         if (!seatTableFormatToUse) {
-            alert('无法获取座位表格式，请检查行列及同桌数设置。');
+            showInPageNotification('无法获取座位表格式，请检查行列及同桌数设置。', 'error');
             aiArrangeButton.disabled = false; 
             return;
         }
@@ -1341,13 +1557,13 @@ if (importSeatTableButton) {
     importSeatTableButton.addEventListener('click', () => {
         const markdown = importSeatTableMarkdownTextarea.value.trim();
         if (!markdown) {
-            alert('请粘贴要导入的座位表Markdown。');
+            showInPageNotification('请粘贴要导入的座位表Markdown。', 'info');
             return;
         }
 
         const lines = markdown.split('\n');
         if (lines.length < 2 || !lines[0].includes('|') || !lines[1].includes('---')) {
-            alert('Markdown格式似乎不正确，至少需要包含表头和分隔行。');
+            showInPageNotification('Markdown格式似乎不正确，至少需要包含表头和分隔行。', 'warning');
             return;
         }
 
@@ -1360,9 +1576,9 @@ if (importSeatTableButton) {
             rowsInput.value = rows;
             colsInput.value = cols;
             deskMatesInput.value = deskMates;
-            alert(`座位表已成功导入并显示。检测到 ${rows} 行, ${cols} 列, ${deskMates} 同桌。`);
+            showInPageNotification(`座位表已成功导入并显示。检测到 ${rows} 行, ${cols} 列, ${deskMates} 同桌。`, 'success');
         } else {
-            alert('座位表已成功导入并显示。未能自动识别行列同桌数，请手动检查。');
+            showInPageNotification('座位表已成功导入并显示。未能自动识别行列同桌数，请手动检查。', 'info');
         }
         
         importSeatTableMarkdownTextarea.value = ''; 
@@ -1476,7 +1692,7 @@ if (sendSeatModificationButton) {
     sendSeatModificationButton.addEventListener('click', async () => {
         const modificationInstruction = seatModificationInput.value.trim();
         if (!modificationInstruction) {
-            alert('请输入修改指令。');
+            showInPageNotification('请输入修改指令。', 'warning');
             return;
         }
 
@@ -1513,11 +1729,11 @@ if (sendSeatModificationButton) {
 
         const seatModificationTaskConfig = getModelConfig('seat_modification');
         if (!seatModificationTaskConfig) {
-            alert('请在侧边栏"使用模型选择"中为"座位微调"任务选择一个模型。');
+            showInPageNotification('请在侧边栏"使用模型选择"中为"座位微调"任务选择一个模型。', 'warning');
             return;
         }
         if (!seatModificationTaskConfig.baseURL || !seatModificationTaskConfig.modelId || !seatModificationTaskConfig.apiKey) {
-            alert('选择的"座位微调"模型配置不完整。请检查提供商配置。');
+            showInPageNotification('选择的"座位微调"模型配置不完整。请检查提供商配置。', 'warning');
             return;
         }
 
@@ -1858,7 +2074,7 @@ function processSeatChanges(aiResponse, currentSeatTableMarkdown, originalSeatFo
 importPersonnelButton.addEventListener('click', () => {
     const markdown = importPersonnelMarkdownTextarea.value.trim();
     if (!markdown) {
-        alert('请粘贴要导入的Markdown表格。');
+        showInPageNotification('请粘贴要导入的Markdown表格。', 'info');
         return;
     }
 
@@ -1866,10 +2082,10 @@ importPersonnelButton.addEventListener('click', () => {
     if (importedData.length > 0) {
         personnelData = importedData;
         renderPersonnelTable(); 
-        alert(`成功导入 ${importedData.length} 条人员信息。`);
+        showInPageNotification(`成功导入 ${importedData.length} 条人员信息。`, 'success');
         importPersonnelMarkdownTextarea.value = ''; 
     } else {
-        alert('未能解析为有效的人员信息表格，请检查Markdown格式是否正确（需要表头、分隔线和数据行）。');
+        showInPageNotification('未能解析为有效的人员信息表格，请检查Markdown格式是否正确（需要表头、分隔线和数据行）。', 'warning');
     }
 });
 
@@ -1881,12 +2097,12 @@ copyArrangedTableButton.addEventListener('click', () => {
     const arrangedMarkdownTable = localStorage.getItem('arranged_seat_table_markdown') || '';
     if (arrangedMarkdownTable) {
         navigator.clipboard.writeText(arrangedMarkdownTable).then(() => {
-            alert('编排好的座位表已复制到剪贴板！');
+            showInPageNotification('编排好的座位表已复制到剪贴板！', 'success');
         }, () => {
-            alert('复制失败，请手动复制表格内容。');
+            showInPageNotification('复制失败，请手动复制表格内容。', 'error');
         });
     } else {
-        alert('请先进行AI智能编排。');
+        showInPageNotification('请先进行AI智能编排。', 'warning');
     }
 });
 
@@ -1896,12 +2112,12 @@ if (copyPersonnelInfoButton) {
         const markdownToCopy = personnelDataToMarkdown(personnelData);
         if (markdownToCopy) {
             navigator.clipboard.writeText(markdownToCopy).then(() => {
-                alert('人员信息已复制到剪贴板！');
+                showInPageNotification('人员信息已复制到剪贴板！', 'success');
             }, () => {
-                alert('复制失败，请手动复制。');
+                showInPageNotification('复制失败，请手动复制。', 'error');
             });
         } else {
-            alert('当前没有人员信息可复制。');
+            showInPageNotification('当前没有人员信息可复制。', 'info');
         }
     });
 }
@@ -1910,24 +2126,19 @@ if (copyPersonnelInfoButton) {
 if (togglePersonnelListButton && outputSection && contentWrapper) {
     togglePersonnelListButton.addEventListener('click', () => {
         const isNowCollapsed = outputSection.classList.toggle('personnel-collapsed');
-        contentWrapper.classList.toggle('personnel-list-collapsed', isNowCollapsed);
+        // contentWrapper.classList.toggle('personnel-list-collapsed', isNowCollapsed); // This class might not be needed anymore if direct width styling is used
 
         if (isNowCollapsed) {
-            togglePersonnelListButton.innerHTML = '>'; 
-            Array.from(togglePersonnelListButton.parentElement.children).forEach(button => {
-                if (button.id !== 'toggle-personnel-list') { 
-                    button.style.display = 'none';
-                }
-            });
+            togglePersonnelListButton.innerHTML = '▶'; // Indicate it can be expanded
         } else {
-            togglePersonnelListButton.textContent = '折叠列表';
-            Array.from(togglePersonnelListButton.parentElement.children).forEach(button => {
-                 if (button.id !== 'toggle-personnel-list') {
-                    button.style.display = ''; 
-                 }
-            });
+            togglePersonnelListButton.innerHTML = '<'; // Indicate it can be collapsed
         }
-        renderPersonnelTable(); 
+        renderPersonnelTable(); // Re-render table for collapsed/expanded view
+        // Hide/show description input based on collapsed state
+        const descriptionGroup = outputSection.querySelector('.description-input-group');
+        if (descriptionGroup) {
+            descriptionGroup.style.display = isNowCollapsed ? 'none' : 'flex';
+        }
     });
 }
 
@@ -1985,6 +2196,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (trigger === infoModelTrigger) taskType = 'personnel';
                 else if (trigger === seatingModelTrigger) taskType = 'seating';
                 else if (trigger === seatModifyModelTrigger) taskType = 'seat_modification';
+                else if (trigger === agentModelTrigger) taskType = 'agent'; // 新增Agent模型选择支持
                 
                 if (taskType) {
                     currentDisplayedTaskType = taskType; 
@@ -2032,14 +2244,245 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// === Agent功能相关代码 - 新增的AI Agent统筹功能 ===
+
+// Agent对话功能 - 发送消息到AI API
+if (agentSendButton && agentChatInput && agentChatMessages) {
+    agentSendButton.addEventListener('click', sendAgentMessage);
+    agentChatInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendAgentMessage();
+        }
+    });
+}
+
+// Agent清空对话历史功能
+if (agentClearButton && agentChatMessages) {
+    agentClearButton.addEventListener('click', () => {
+        if (confirm('确定要清空所有对话记录吗？')) {
+            agentConversationHistory = [];
+            agentChatMessages.innerHTML = '';
+            showInPageNotification('Agent对话记录已清空。', 'info');
+        }
+    });
+}
+
+// Agent配置保存功能
+if (agentSaveConfigButton && agentSystemPromptTextarea) {
+    agentSaveConfigButton.addEventListener('click', () => {
+        agentSystemPrompt = agentSystemPromptTextarea.value.trim();
+        localStorage.setItem('agent_system_prompt', agentSystemPrompt);
+        showInPageNotification('Agent配置已保存！', 'success');
+    });
+}
+
+// 页面加载时恢复Agent配置
+document.addEventListener('DOMContentLoaded', () => {
+    const savedSystemPrompt = localStorage.getItem('agent_system_prompt') || '';
+    agentSystemPrompt = savedSystemPrompt;
+    if (agentSystemPromptTextarea) {
+        agentSystemPromptTextarea.value = savedSystemPrompt;
+    }
+});
+
+// Agent发送消息核心函数
+async function sendAgentMessage() {
+    const userMessage = agentChatInput.value.trim();
+    if (!userMessage) return;
+
+    // 获取Agent模型配置
+    const agentConfig = getModelConfig('agent');
+    if (!agentConfig) {
+        showInPageNotification('请在侧边栏"使用模型选择"中为"Agent驱动模型"选择一个模型。', 'warning');
+        return;
+    }
+
+    // 添加用户消息到界面
+    addAgentMessage('user', userMessage);
+    agentChatInput.value = '';
+    agentSendButton.disabled = true;
+
+    // 添加用户消息到对话历史
+    agentConversationHistory.push({ role: 'user', content: userMessage });
+
+    const aiMessageId = `agent-msg-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
+    let aiMessageDiv = createAgentMessageElement('assistant', 'AI 正在思考中...', aiMessageId);
+    agentChatMessages.appendChild(aiMessageDiv);
+    let aiMessageContentDiv = aiMessageDiv.querySelector('.agent-message-content');
+    // Ensure the thinking message is visible and scroll to it
+    agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
+
+
+    try {
+        // 构建请求消息
+        const messagesForAPI = [];
+        // 系统提示词 (如果已配置)
+        // if (agentSystemPrompt) { messagesForAPI.push({ role: 'system', content: agentSystemPrompt }); }
+        
+        const recentHistory = agentConversationHistory.slice(-20); // 保留最近20条
+        messagesForAPI.push(...recentHistory);
+
+        let accumulatedAiResponse = ""; // 用于存储完整的AI回复以加入历史记录
+
+        try {
+            const response = await fetch(`${agentConfig.baseURL}/v1/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${agentConfig.apiKey}`
+                },
+                body: JSON.stringify({
+                    model: agentConfig.modelId,
+                    messages: messagesForAPI,
+                    temperature: 0.7,
+                    max_tokens: 2000,
+                    stream: true // 启用流式传输
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`API请求失败: ${response.status} ${response.statusText} - ${errorData.error?.message || '未知错误'}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let thinkingContent = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const jsonData = line.substring(6).trim();
+                        if (jsonData === '[DONE]') break;
+                        try {
+                            const parsedData = JSON.parse(jsonData);
+                            const delta = parsedData.choices[0]?.delta;
+                            const reasoningChunk = delta?.reasoning_content || delta?.reasoning;
+                            const contentChunk = delta?.content;
+
+                            if (reasoningChunk) {
+                                thinkingContent += reasoningChunk;
+                                // Update the "Thinking..." message bubble with reasoning content
+                                // For simplicity, we'll show reasoning in a pre tag within the message
+                                if (aiMessageContentDiv.innerHTML.startsWith('AI 正在思考中...')) {
+                                    aiMessageContentDiv.innerHTML = '<strong>AI 思考过程:</strong><pre style="margin-top: 5px; white-space: pre-wrap; word-wrap: break-word; max-height: 150px; overflow-y: auto; background-color: #f0f0f0; border: 1px dashed #ccc; padding: 5px; border-radius: 4px;"></pre>';
+                                }
+                                const preElement = aiMessageContentDiv.querySelector('pre');
+                                if (preElement) {
+                                    preElement.textContent = thinkingContent;
+                                    preElement.scrollTop = preElement.scrollHeight; // Scroll pre if it overflows
+                                }
+                                agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
+                            }
+                            if (contentChunk) {
+                                // If we were showing reasoning, clear it or replace it when actual content arrives
+                                if (aiMessageContentDiv.querySelector('pre')) {
+                                    aiMessageContentDiv.innerHTML = ''; // Clear reasoning once content starts
+                                    accumulatedAiResponse = ''; // Reset accumulated response
+                                }
+                                accumulatedAiResponse += contentChunk;
+                                aiMessageContentDiv.innerHTML = marked.parse(accumulatedAiResponse); // Render Markdown
+                                agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
+                            }
+                        } catch (e) {
+                            console.error('解析Agent SSE数据块时出错:', e, '数据块:', jsonData);
+                        }
+                    }
+                }
+                if (typeof jsonData !== 'undefined' && jsonData === '[DONE]') break;
+            }
+            
+            // 流结束后，将完整的AI回复添加到历史记录
+            if (accumulatedAiResponse) {
+                 agentConversationHistory.push({ role: 'assistant', content: accumulatedAiResponse });
+            } else { // 如果没有内容块，但可能有错误或空回复
+                if (!aiMessageContentDiv.textContent) {
+                     aiMessageContentDiv.textContent = 'AI未返回有效内容。';
+                }
+            }
+
+        } catch (error) {
+            console.error('Agent API调用错误:', error);
+            if (aiMessageContentDiv) {
+                aiMessageContentDiv.innerHTML = marked.parse(`错误: ${error.message}`);
+            } else {
+                addAgentMessage('assistant', `处理回复时出错: ${error.message}`);
+            }
+            showInPageNotification(`Agent调用失败: ${error.message}`, 'error');
+        } 
+        // No separate outer catch needed if all primary operations are within the inner try-catch
+        // The outer try was primarily for the initial message creation which is now less prone to fail before fetch.
+    } finally { 
+        agentSendButton.disabled = false;
+        // If thinking was shown and not replaced by content, ensure it's cleared or finalized.
+        // This logic is now handled by replacing thinking content with actual content.
+        if(agentChatMessages) agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
+    }
+}
+
+
+// 创建Agent消息元素的辅助函数
+function createAgentMessageElement(role, content, id) {
+    const messageDiv = document.createElement('div');
+    if (id) messageDiv.id = id;
+    messageDiv.className = `agent-message ${role === 'user' ? 'user-message' : 'agent-message-assistant'}`;
+    
+    const roleLabel = role === 'user' ? '用户' : 'Agent';
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'agent-message-header';
+    headerDiv.innerHTML = `<strong>${roleLabel}</strong> <span class="agent-message-time">${timestamp}</span>`;
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'agent-message-content';
+    // If content is "AI 正在思考中..." or similar, don't parse as markdown yet.
+    // Markdown parsing will happen when actual AI response content is streamed.
+    if (content.includes('AI 正在思考中...') || (content.startsWith('<strong>AI 思考过程:</strong>'))) {
+        contentDiv.innerHTML = content; // Allow initial HTML for thinking message
+    } else {
+        contentDiv.innerHTML = marked.parse(content); // Parse other content as Markdown
+    }
+
+    messageDiv.appendChild(headerDiv);
+    messageDiv.appendChild(contentDiv);
+    return messageDiv;
+}
+
+// 添加消息到Agent对话界面 (现在使用辅助函数)
+function addAgentMessage(role, content) {
+    if (!agentChatMessages) return null;
+    const messageElement = createAgentMessageElement(role, content);
+    agentChatMessages.appendChild(messageElement);
+    agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
+    return messageElement.id; // 返回创建的元素的ID，如果需要引用
+}
+
+// 移除指定的Agent消息 (这个函数可能不再需要，因为我们是更新现有消息或直接添加最终消息)
+// function removeAgentMessage(messageId) {
+//     if (messageId) {
+//         const messageElement = document.getElementById(messageId);
+//         if (messageElement) {
+//             messageElement.remove();
+//         }
+//     }
+// }
+
+// === Agent功能代码结束 ===
+
 // --- 自动滚动功能 ---
 function setupAutoScrollForPreElement(preElement) {
-    if (!preElement) return () => {}; // 返回一个空函数，如果元素不存在
+    if (!preElement) return () => {}; 
     let userHasScrolledUp = false;
 
     preElement.addEventListener('scroll', () => {
-        // 如果滚动条不在底部 (允许一些像素误差)，则认为用户已向上滚动
-        // 预留20像素的容差
         if (preElement.scrollTop + preElement.clientHeight < preElement.scrollHeight - 20) {
             userHasScrolledUp = true;
         } else {
@@ -2047,7 +2490,6 @@ function setupAutoScrollForPreElement(preElement) {
         }
     });
 
-    // 返回一个函数，用于在内容更新后检查是否需要滚动
     return function autoScrollIfEnabled() {
         if (!userHasScrolledUp) {
             preElement.scrollTop = preElement.scrollHeight;
@@ -2059,3 +2501,20 @@ function setupAutoScrollForPreElement(preElement) {
 const personnelThinkingAutoScroll = personnelThinkingPre ? setupAutoScrollForPreElement(personnelThinkingPre) : () => {};
 const aiThinkingAutoScroll = aiThinkingPre ? setupAutoScrollForPreElement(aiThinkingPre) : () => {};
 const seatModifyThinkingAutoScroll = seatModifyThinkingPre ? setupAutoScrollForPreElement(seatModifyThinkingPre) : () => {};
+const agentThinkingAutoScroll = () => { // Modified to scroll the main chat messages if needed
+    if (agentChatMessages) {
+        // Check if the last message contains a pre tag (our thinking process)
+        const lastMessage = agentChatMessages.lastElementChild;
+        if (lastMessage) {
+            const preInLastMessage = lastMessage.querySelector('pre');
+            if (preInLastMessage) {
+                // Scroll the pre element itself if it's scrollable
+                if (preInLastMessage.scrollHeight > preInLastMessage.clientHeight) {
+                     preInLastMessage.scrollTop = preInLastMessage.scrollHeight;
+                }
+            }
+            // Always scroll the main chat container to the bottom to see the latest message/thinking
+            agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
+        }
+    }
+};

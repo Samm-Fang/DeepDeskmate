@@ -20,11 +20,19 @@ body {
     overflow-x: hidden; /* Prevent horizontal scrollbar during transition */
 }
 
-/* 新的侧边栏触发按钮样式 */
+/* Container for main content and floating buttons */
+.container-wrapper {
+    flex-grow: 1;
+    position: relative; /* Crucial for positioning buttons relative to this wrapper */
+    display: flex; /* To make .container take up available space */
+    flex-direction: column; /* Stack .container and potentially other elements */
+}
+
+/* 侧边栏触发按钮样式 - 现在相对于 .container-wrapper 定位 */
 .sidebar-toggle-button {
-    position: fixed;
+    position: absolute; /* Changed from fixed to absolute */
     bottom: 20px;
-    right: 20px; /* 改为右侧 */
+    right: 20px; /* Will be relative to .container-wrapper */
     width: 50px;
     height: 50px;
     background-color: #3498db;
@@ -37,16 +45,29 @@ body {
     justify-content: center;
     cursor: pointer;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    z-index: 1001; /*确保在其他内容之上，但在侧边栏之下（如果侧边栏打开）*/
-    transition: background-color 0.3s ease, right 0.3s ease-in-out; /* 添加 right 过渡 */
+    z-index: 1001; /* Ensure buttons are above content but below sidebar */
+    transition: background-color 0.3s ease, bottom 0.3s ease, right 0.3s ease; /* Added right transition */
 }
 
 .sidebar-toggle-button:hover {
     background-color: #2980b9;
 }
 
-/* .sidebar.open + .sidebar-toggle-button rule removed as it's ineffective due to DOM structure */
-/* Button movement will be handled by JavaScript */
+/* 设置按钮位置 (ID specific for clarity) */
+#sidebar-toggle-button {
+    /* right: 20px; bottom: 20px; are defaults from .sidebar-toggle-button */
+}
+
+/* Agent按钮位置 - 在设置按钮上方 (ID specific for clarity) */
+#open-agent-button {
+    bottom: 80px; /* 20px (settings button bottom) + 50px (settings button height) + 10px (gap) */
+    /* right: 20px; is default from .sidebar-toggle-button */
+    background-color: #e74c3c; /* 不同的颜色区分 */
+}
+
+#open-agent-button:hover {
+    background-color: #c0392b;
+}
 
 
 .container { /* Main content area */
@@ -61,9 +82,10 @@ body {
     height: 100%; /* Fill height of app-wrapper */
     transition: margin-right 0.3s ease-in-out, width 0.3s ease-in-out; /* 修改过渡属性 */
     width: 100%; /* 初始宽度 */
+    /* margin-right will be controlled by JS directly on style for width adjustment */
 }
 /* .app-wrapper.sidebar-visible .container is no longer needed in this form */
-/* .container.sidebar-open-content-shift is now used */
+/* .container.sidebar-open-content-shift class will be used by JS to adjust mainContainer style.width */
 
 .main-header {
     display: flex;
@@ -191,12 +213,90 @@ button:disabled {
 }
 
 
-.output-section .controls {
+.section-header-controls {
+    display: flex;
+    justify-content: space-between; /* Pushes title and button to opposite ends */
+    align-items: center; /* Vertically aligns items */
+    margin-bottom: 10px; /* 与下方内容的间距 */
+}
+
+.section-header-controls h3 {
+    margin: 0 10px 0 0; /* Removes default h3 bottom margin, adds right margin */
+    font-size: 1.1em; /* Optional: adjust title size if needed */
+}
+
+.section-header-controls .inline-button {
+    padding: 5px 10px; /* Smaller padding for inline buttons */
+    font-size: 0.9em; /* Smaller font size for inline buttons */
+    /* Add any other specific styling for these buttons */
+}
+
+.section-header-controls h2 {
+    margin-bottom: 0; /* 移除h2的默认下边距，因为flex会处理对齐 */
+}
+
+.toggle-list-button {
+    padding: 5px 10px; /* 调整内边距使按钮更小巧 */
+    font-size: 1.2rem; 
+    min-width: auto; 
+    line-height: 1; 
+    padding: 5px 8px; /* Adjusted padding for a smaller icon button */
+    background-color: transparent; /* Make it less obtrusive */
+    color: #555;
+    border: 1px solid #ccc;
+}
+.toggle-list-button:hover {
+    background-color: #e9e9e9;
+    color: #333;
+}
+
+/* Hide description input when personnel section is collapsed */
+.output-section.personnel-collapsed .description-input-group {
+    display: none;
+}
+
+
+.personnel-details-area {
+    /* 这个区域将包含输入、按钮、加载提示和表格 */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.personnel-input-area {
+    padding: 0; /* 移除内边距，因为它现在是更大区域的一部分 */
+    border: none; /* 移除边框 */
+    box-shadow: none; /* 移除阴影 */
+    background-color: transparent; /* 透明背景 */
+    flex-shrink: 0; /* 输入区域不可压缩 */
+}
+
+.personnel-controls {
     display: flex;
     gap: 10px;
+    margin-top: 10px; /* 与上方输入区域的间距 */
+    margin-bottom: 10px; /* 与下方加载提示或表格的间距 */
+    flex-shrink: 0; /* 按钮区域不可压缩 */
 }
-.output-section .controls button {
+
+.personnel-controls button {
     flex-grow: 1; 
+}
+
+.loading-indicator#loading-personnel {
+    text-align: center;
+    padding: 10px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    flex-shrink: 0; /* 加载指示器不可压缩 */
+}
+
+.import-personnel-section {
+    margin-top: 10px !important; /* 减少与上方表格的距离 */
+    padding-top: 10px !important;
+    flex-shrink: 0; /* 导入区域不可压缩 */
 }
 
 .import-personnel-section {
@@ -216,6 +316,7 @@ button:disabled {
     margin-top: 20px; 
     padding-top: 20px; 
     border-top: 1px solid #eee;
+    flex-shrink: 0; /* 导入座位表区域不可压缩 */
 }
 .import-seat-table-section h3 {
     margin-top: 0;
@@ -235,6 +336,7 @@ button:disabled {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex-shrink: 0; /* 座位修改区域不可压缩 */
 }
 .seat-modification-section h3 {
     margin-top: 0;
@@ -263,6 +365,7 @@ button:disabled {
     border: 2px dashed #cccccc; /* Changed border to match thinking output */
     border-radius: 8px; /* Added border-radius to match thinking output */
     margin-top: 10px; /* Added margin-top to match thinking output */
+    flex-shrink: 0; /* 座位修改输出区域不可压缩 */
     /* display: none; /* Initial state if needed, then controlled by JS */
     /* opacity: 0; /* Initial state if needed, then controlled by JS */
     /* transition: opacity 0.3s ease-in-out; /* Transition if needed */
@@ -274,6 +377,7 @@ button:disabled {
     flex-wrap: wrap;
     gap: 15px;
     align-items: center;
+    flex-shrink: 0; /* 控制区域不可压缩 */
 }
 .table-generator-section .generator-controls label {
     margin-bottom: 0; 
@@ -285,7 +389,8 @@ button:disabled {
 .table-generator-section .generator-buttons {
     display: flex;
     gap: 10px;
-    width: 100%; 
+    width: 100%;
+    flex-shrink: 0; /* 按钮区域不可压缩 */
 }
 .table-generator-section .generator-buttons button {
     flex-grow: 1; 
@@ -297,6 +402,7 @@ button:disabled {
     flex-direction: row; 
     gap: 20px; 
     align-items: flex-start; /* 改回 flex-start，允许内容决定自身高度，避免被拉伸 */
+    flex-shrink: 0; /* 编排区域不可压缩 */
 }
 
 .arrangement-remarks-wrapper, 
@@ -384,13 +490,23 @@ button:disabled {
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
+#markdown-output {
+    /* 这里可以添加特定于markdown输出的样式 */
+    flex-grow: 1;
+    min-height: 0;
+    overflow-y: auto;
+    /* 覆盖通用样式中的min-height */
+    min-height: 0 !important;
+}
+
 /* Specific styles for #table-preview to handle vertical growth and scrolling */
 #table-preview {
     /* flex-grow: 1; Removed as per new requirement */
     /* overflow-y: auto; Removed to allow content to define height */
     /* min-height: 0; Removed to allow content to define height */
     display: flex; 
-    flex-direction: column; 
+    flex-direction: column;
+    flex-shrink: 0; /* 确保表格预览区域不会被压缩 */
     /* overflow-x: auto; is handled by a more general rule below if needed */
 }
 
@@ -437,7 +553,7 @@ button:disabled {
 .content-wrapper {
     display: flex; 
     gap: 30px;
-    align-items: stretch; /* Children will stretch to the height of the tallest item */
+    align-items: flex-start; /* Allow children to determine their own height */
     flex-grow: 1; /* Allow it to take available vertical space in .container */
     min-height: 0; /* Important for a flex item that grows, to allow shrinking if needed */
     /* overflow: hidden; /* Consider if clipping is desired for the wrapper itself */
@@ -445,18 +561,19 @@ button:disabled {
 
 .output-section {
     /* display: flex; flex-direction: column; is already set by generic section styles */
-    min-height: 800px; /* New requirement */
-    flex-shrink: 0; /* Prevent output section from shrinking too much by default */
+    flex-shrink: 1; /* 允许人员信息表根据座位列表生成器的高度进行调整 */
     flex-basis: 45%; /* Default basis, can be adjusted */
     /* min-width: 320px; Already set */
     transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, flex-basis 0.3s ease-in-out;
+    overflow-y: auto; /* 人员信息表在空间不足时显示滚动条 */
+    align-self: stretch; /* Make output-section stretch to the height of table-generator-section */
 }
 
 .table-generator-section {
-    /* flex-grow: 1; Removed */
+    /* flex-grow: 1; Removed, height will be determined by content */
     min-width: 320px; 
     /* display: flex; flex-direction: column; is already set by generic section styles */
-    align-self: flex-start; /* Prevent stretching if output-section's min-height makes it taller */
+    /* flex-shrink: 0; Removed to allow content to define height */
 }
 
 
@@ -486,7 +603,8 @@ button:disabled {
     margin-bottom: 15px; /* 为移动后的元素添加底部外边距 */
     display: none; 
     opacity: 0; 
-    transition: opacity 0.3s ease-in-out; 
+    transition: opacity 0.3s ease-in-out;
+    flex-shrink: 0; /* 思考过程区域不可压缩 */
 }
 
 .thinking-output-visible { 
@@ -528,6 +646,48 @@ button:disabled {
     from { opacity: 0; }
     to { opacity: 1; }
 }
+
+/* Agent Thinking Output - similar to other thinking outputs */
+.agent-thinking-output {
+    padding: 10px 15px; /* Consistent with other thinking outputs but might need adjustment based on sidebar context */
+    background-color: transparent; 
+    border: 2px dashed #cccccc; 
+    border-radius: 8px;
+    margin-bottom: 10px; /* Space before chat messages */
+    display: none; 
+    opacity: 0; 
+    transition: opacity 0.3s ease-in-out;
+    flex-shrink: 0; /* Prevent shrinking if content is small */
+}
+.agent-thinking-output.thinking-output-visible { /* To show it */
+    display: block !important;
+    opacity: 1 !important;
+}
+.agent-thinking-output h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1rem; /* Slightly smaller for sidebar context */
+    color: #555; 
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 4px;
+}
+.agent-thinking-output pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 100px; /* Smaller max-height for sidebar */
+    overflow-y: auto;
+    background-color: transparent; 
+    padding: 8px;
+    border-radius: 6px;
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+    font-size: 0.85rem; /* Smaller font for sidebar */
+    color: #777777; 
+    border: none; 
+    opacity: 0;
+    animation: fadeInText 0.3s ease-in-out forwards;
+    animation-delay: 0.1s; 
+}
+
 
 /* Styles for special seat modification commands */
 .seat-mod-command {
@@ -589,16 +749,18 @@ button:disabled {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    transition: right 0.3s ease-in-out; 
+    transition: right 0.3s ease-in-out, margin-right 0.3s ease-in-out; /* Added margin-right transition */
     flex-shrink: 0;
 }
 
-.sidebar.open { 
-    right: 0; 
+.sidebar.open {
+    right: 0;
 }
 
+/* This class will be added to .container when a sidebar is open to adjust its width */
 .container.sidebar-open-content-shift {
-    margin-right: 350px; 
+    /* width: calc(100% - 350px); /* This will be set by JavaScript */
+    /* margin-right: 350px; /* This might still be needed if buttons are outside .container but inside .container-wrapper */
 }
 
 
@@ -634,6 +796,177 @@ button:disabled {
     display: flex;
     flex-direction: column;
     gap: 20px; 
+}
+
+/* Agent对话界面样式 */
+.agent-chat-section {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.agent-chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 500px;
+}
+
+.agent-chat-messages {
+    flex-grow: 1;
+    /* border: 1px solid #e0e0e0; Removed border */
+    /* border-radius: 8px; Removed border-radius */
+    padding: 0; /* Adjusted padding, or remove if handled by individual messages */
+    /* background-color: #f8f9fa; Removed background, will inherit from sidebar-content */
+    overflow-y: auto;
+    margin-bottom: 15px; /* Keep space before input area */
+    display: flex;
+    flex-direction: column; 
+    gap: 12px; 
+}
+
+.agent-message {
+    padding: 12px 15px; /* Increased padding */
+    border-radius: 10px; /* More rounded corners */
+    position: relative;
+    max-width: 85%; /* Messages don't take full width */
+    word-wrap: break-word; /* Ensure long words break */
+    line-height: 1.5;
+}
+
+.agent-message.user-message {
+    background-color: #e2f0d9; /* 用户消息背景 - 浅绿色 */
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    align-self: flex-end; /* 用户消息靠右 */
+    border-left: none; 
+    border-right: 4px solid #28a745; /* 右侧绿色强调线 */
+    margin-left: auto; 
+    margin-right: 5px; 
+}
+
+.agent-message.agent-message-assistant, 
+.agent-message.assistant-message { 
+    background-color: #d1e7fd; /* Agent消息背景 - 浅蓝色 */
+    border: 1px solid #b8daff;
+    color: #0c5460;
+    align-self: flex-start; /* Agent消息靠左 */
+    border-right: none; 
+    border-left: 4px solid #007bff; /* 左侧蓝色强调线 */
+    margin-right: auto; 
+    margin-left: 5px; 
+}
+.agent-message.agent-message-error, /* For error messages from agent */
+.agent-message.error-message {
+    background-color: #f8d7da; /* Light red for errors */
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    border-left: 4px solid #dc3545; /* Red accent */
+    align-self: flex-start;
+    margin-right: auto;
+    margin-left: 5px;
+}
+
+
+.agent-message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px; /* Space between header and content */
+    font-size: 0.85rem;
+    color: #555;
+}
+.agent-message-header strong {
+    font-weight: 600;
+}
+.agent-message-time {
+    font-size: 0.75rem;
+    color: #777;
+}
+
+.agent-message-content {
+    /* margin-bottom: 5px; Handled by agent-message padding */
+    /* line-height: 1.5; Moved to .agent-message */
+    /* word-wrap: break-word; Moved to .agent-message */
+}
+
+
+.agent-chat-input-area {
+    flex-shrink: 0;
+    padding-top: 15px; /* Add some space above input area */
+    border-top: 1px solid #e0e0e0; /* Separator line */
+    background-color: #fdfdfd; /* Match sidebar background */
+    margin: 0 -20px -20px -20px; /* Extend to sidebar edges */
+    padding: 15px 20px 20px 20px; /* Inner padding */
+}
+
+.agent-chat-input-area textarea {
+    margin-bottom: 10px;
+    resize: vertical;
+    min-height: 70px; /* Slightly taller input */
+    border-radius: 8px; /* Rounded corners for textarea */
+    border: 1px solid #ced4da;
+    padding: 10px;
+}
+.agent-chat-input-area textarea:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.agent-chat-input-buttons { /* New wrapper for buttons */
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end; /* Align buttons to the right */
+}
+
+.agent-chat-input-buttons button {
+    flex-grow: 0; /* Buttons don't grow */
+    padding: 8px 15px; /* Adjust padding */
+    font-size: 0.95rem;
+}
+
+/* Specific button styling if needed, e.g., for primary send button */
+#agent-send-button {
+    background-color: #007bff; /* Blue send button */
+}
+#agent-send-button:hover {
+    background-color: #0056b3;
+}
+#agent-clear-button {
+    background-color: #6c757d; /* Grey clear button */
+}
+#agent-clear-button:hover {
+    background-color: #545b62;
+}
+
+
+/* Agent配置区域样式 - Kept for now, but not primary focus of this change */
+.agent-config-section {
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+.agent-config-section textarea {
+    min-height: 80px;
+}
+
+.agent-config-section input[type="number"] {
+    width: 100px;
+}
+
+/* Ensure primary and secondary button classes are available if used by agent controls */
+.primary-button { /* General primary button style if needed elsewhere */
+    background-color: #007bff;
+}
+.primary-button:hover {
+    background-color: #0056b3;
+}
+.secondary-button { /* General secondary button style */
+    background-color: #6c757d;
+}
+.secondary-button:hover {
+    background-color: #5a6268;
 }
 
 .active-config-display {
@@ -947,6 +1280,58 @@ button.danger-button:hover { background-color: #c0392b; }
     }
 }
 
+/* In-page Notification Area */
+#in-page-notification-area {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000; /* Ensure it's above most other content */
+    width: 300px; /* Or max-width, adjust as needed */
+}
+
+/* Individual Notification Styling */
+.in-page-notification {
+    padding: 12px 18px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transform: translateX(100%);
+    transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #fff; /* Default text color, can be overridden by type */
+}
+
+.in-page-notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Notification Types */
+.in-page-notification.info {
+    background-color: #17a2b8; /* Bootstrap info color */
+    border-left: 5px solid #117a8b;
+}
+
+.in-page-notification.success {
+    background-color: #28a745; /* Bootstrap success color */
+    border-left: 5px solid #1e7e34;
+}
+
+.in-page-notification.warning {
+    background-color: #ffc107; /* Bootstrap warning color */
+    color: #212529; /* Darker text for yellow background */
+    border-left: 5px solid #d39e00;
+}
+
+.in-page-notification.error {
+    background-color: #dc3545; /* Bootstrap danger color */
+    border-left: 5px solid #bd2130;
+}
+
+
+/* Dark mode scrollbar styling */
 /* Scrollbar Styles */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
@@ -959,13 +1344,14 @@ button.danger-button:hover { background-color: #c0392b; }
 
 /* Personnel List Collapsing Styles */
 .personnel-list-wrapper {
-    transition: width 0.3s ease-in-out, padding 0.3s ease-in-out; /* Removed max-height from transition */
+    transition: width 0.3s ease-in-out, padding 0.3s ease-in-out;
     overflow: hidden; 
     width: 100%; 
-    /* max-height: 500px; Removed */
     flex-grow: 1; /* Allow wrapper to grow to fill .output-section */
     overflow-y: auto; /* Always allow scroll if content overflows */
     min-height: 0; /* Important for flex item to shrink correctly */
+    display: flex;
+    flex-direction: column;
 }
 
 .output-section:not(.personnel-collapsed) .personnel-list-wrapper {
@@ -985,13 +1371,14 @@ button.danger-button:hover { background-color: #c0392b; }
 
 
 .output-section.personnel-collapsed {
-    width: 120px; 
-    max-width: 170px; 
-    min-width: 100px; 
-    padding: 10px 5px; 
-    flex-basis: 100px; 
+    width: 90px; /* Adjusted for narrower view */
+    max-width: 150px; /* Adjusted max-width */
+    min-width: 70px; /* Adjusted min-width */
+    padding: 10px 3px; /* Adjusted padding slightly */
+    /* flex-basis: 100px; Removed */ 
     flex-grow: 0; 
     flex-shrink: 0; 
+    min-height: 100px; /* Explicit small min-height when collapsed */
     /* min-height: 800px; will apply unless overridden by media query */
 }
 
@@ -1042,7 +1429,22 @@ button.danger-button:hover { background-color: #c0392b; }
 }
 */
 
-/* Hide controls except the toggle button when collapsed */
+/* Hide input area and controls except the toggle button when collapsed */
+.output-section.personnel-collapsed .personnel-input-area {
+    display: none;
+}
+.output-section.personnel-collapsed .personnel-controls {
+    display: none;
+}
+.output-section.personnel-collapsed .loading-indicator {
+    display: none;
+}
+.output-section.personnel-collapsed .personnel-thinking-output {
+    display: none;
+}
+.output-section.personnel-collapsed .import-personnel-section {
+    display: none;
+}
 .output-section.personnel-collapsed .controls button:not(#toggle-personnel-list) {
     display: none;
 }

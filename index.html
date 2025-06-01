@@ -8,32 +8,35 @@
 </head>
 <body>
 <div class="app-wrapper"> <!-- 新增的包裹层 -->
-    <div class="container"> <!-- 主内容区域 -->
-        <div class="main-header">
-            <h1>DeepDeskmate</h1>
+    <div class="container-wrapper"> <!-- 新增：包裹主内容和浮动按钮 -->
+        <div class="container"> <!-- 主内容区域 -->
+            <div class="main-header">
+                <h1>DeepDeskmate</h1>
             <!-- 模型配置按钮将移动到左下角 -->
         </div>
 
-        <div class="input-section">
-            <label for="person-description">输入人物描述:</label>
-            <div class="description-input-group">
-                <textarea id="person-description" rows="4" placeholder="例如：张三，男，技术负责人，擅长沟通协调。"></textarea>
-                <button id="send-description">发送描述给AI</button>
-            </div>
-        </div>
 
-        <div class="loading-indicator" id="loading" style="display: none;">
-            AI 正在处理中...
-        </div>
+
 
         <div class="content-wrapper">
-            <div class="output-section">
-                <h2>人员信息表</h2>
+            <div class="output-section"> <!-- This section will get the .personnel-collapsed class -->
+                <div class="section-header-controls"> <!-- Wrapper for title and toggle button -->
+                    <h2>人员信息表</h2>
+                    <button id="toggle-personnel-list" class="toggle-list-button"><</button> 
+                </div>
+                <div class="description-input-group"> <!-- This will be hidden when collapsed -->
+                    <textarea id="person-description" rows="4" placeholder="输入需要整理的人物描述，例如：张三，男，技术负责人，擅长沟通协调。"></textarea>
+                </div>
+    
                 <div class="controls">
-                    <button id="clear-personnel-table" class="secondary-button">清除表格</button>
-                    <button id="import-personnel-button" class="secondary-button">导入表格</button>
-                    <button id="copy-personnel-info" class="secondary-button">复制人员信息</button>
-                    <button id="toggle-personnel-list" class="secondary-button">折叠列表</button> 
+                    <button id="send-description">AI整理</button>
+                    <button id="clear-personnel-table" class="secondary-button">清除</button>
+                    <button id="import-personnel-button" class="secondary-button">导入</button>
+                    <button id="copy-personnel-info" class="secondary-button">复制</button>
+                    <!-- toggle-personnel-list button moved up -->
+                </div>
+                <div class="loading-indicator" id="loading" style="display: none;">
+                    AI 正在处理中...
                 </div>
                 <div id="loading" style="display: none;">AI正在思考...</div>
                 <div class="personnel-thinking-output"> <!-- 新增：人员信息处理的思考过程 -->
@@ -108,10 +111,13 @@
                 </div>
             </div>
         </div>
-    </div>
+        <!-- 新的侧边栏触发按钮现在位于 container-wrapper 内部，但在 container 外部 -->
+        <button id="sidebar-toggle-button" class="sidebar-toggle-button settings-button">⚙️</button>
+        <button id="open-agent-button" class="sidebar-toggle-button agent-button">🤖</button>
+    </div> <!-- container-wrapper 结束 -->
 
     <!-- 模型配置侧边栏 -->
-    <aside id="settings-sidebar" class="sidebar closed"> <!-- 侧边栏现在是 app-wrapper 的一部分，初始关闭 -->
+    <aside id="settings-sidebar" class="sidebar closed">
         <div class="sidebar-header">
             <h2>模型配置</h2>
             <!-- 关闭按钮已移除，将通过新的左下角按钮控制 -->
@@ -120,7 +126,6 @@
             <!-- DeepSeek 快速配置 -->
             <div class="config-section deepseek-quick-config">
                 <h3>DeepSeek 快速配置</h3>
-                <label for="deepseek-api-key">DeepSeek API Key:</label>
                 <input type="password" id="deepseek-api-key" placeholder="在此输入 DeepSeek API Key">
                 <button id="quick-config-deepseek">快速配置 DeepSeek</button>
             </div>
@@ -161,9 +166,19 @@
                     </div>
                     <input type="hidden" id="seat-modify-model-select-value" name="seatModifyModelValue">
                 </div>
+                <div class="model-selection-group">
+                    <label for="agent-model-trigger">Agent驱动模型:</label>
+                    <div class="custom-select-wrapper">
+                        <button type="button" id="agent-model-trigger" class="custom-select-trigger" data-dropdown-id="agent-model-dropdown">--选择模型--</button>
+                        <div class="custom-select-dropdown" id="agent-model-dropdown">
+                            <input type="text" class="model-search-input" placeholder="搜索模型...">
+                            <ul class="custom-options-list"></ul>
+                        </div>
+                    </div>
+                    <input type="hidden" id="agent-model-select-value" name="agentModelValue">
+                </div>
                 <button id="save-model-usage-button">保存模型选择</button>
             </div>
-            
             <!-- 提供商配置板块 -->
             <div class="config-section provider-settings">
                 <h3>提供商配置</h3>
@@ -172,40 +187,41 @@
                 </div>
                 <button id="add-provider-button">添加提供商</button>
             </div>
+        </div>
+    </aside>
 
-             <div id="active-config-display" class="active-config-display" style="display: none;"><p>当前信息整理模型: <strong></strong></p></div>
+    <!-- Agent 侧边栏 -->
+    <aside id="agent-sidebar" class="sidebar closed">
+        <div class="sidebar-header">
+            <h2>Agent</h2>
+            <!-- 关闭按钮可以考虑添加，或者依赖主按钮切换 -->
+        </div>
+        <div class="sidebar-content agent-chat-section"> <!-- Added agent-chat-section for flex layout -->
+            <!-- Removed agent-thinking-output div, thinking process will be inside message bubbles -->
+            <div id="agent-chat-messages" class="agent-chat-messages">
+                <!-- 消息将由JS动态添加 -->
+            </div>
+            <div class="agent-chat-input-area">
+                <textarea id="agent-chat-input" placeholder="输入您的消息..." rows="3"></textarea>
+                <div class="agent-chat-input-buttons">
+                    <button id="agent-send-button">发送</button>
+                    <button id="agent-clear-button" class="secondary-button">清空对话</button>
+                </div>
+            </div>
+            <!-- Agent 配置 (如果需要，可以放在这里或另一个可折叠区域) -->
+            <!-- 
+            <div class="agent-config-section">
+                <h3>Agent 配置</h3>
+                <label for="agent-system-prompt">系统提示词:</label>
+                <textarea id="agent-system-prompt" rows="3" placeholder="定义Agent的行为和角色..."></textarea>
+                <button id="agent-save-config-button">保存配置</button>
+            </div>
+             -->
         </div>
     </aside>
 </div> <!-- app-wrapper 结束 -->
 
-    <!-- 新的侧边栏触发按钮 -->
-    <button id="sidebar-toggle-button" class="sidebar-toggle-button">⚙️</button>
-
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="script.js"></script>
-    <div id="footer" style="text-align: center; padding: 10px; background-color: #f0f0f0; width: 100%; opacity: 0; transition: opacity 0.5s ease;">
-        <p>Developed By SammFang | GitHub: <a href="https://github.com/Samm-Fang/DeepDeskmate" target="_blank" rel="noopener noreferrer">https://github.com/Samm-Fang/DeepDeskmate</a></p>
-    </div>
-    <script>
-        window.addEventListener('scroll', function() {
-            const footer = document.getElementById('footer');
-            const scrollPosition = window.innerHeight + window.pageYOffset;
-            const totalHeight = document.documentElement.scrollHeight;
-            if (scrollPosition >= totalHeight - 50) { // 提前50像素开始渐显
-                footer.style.opacity = '1';
-            } else {
-                footer.style.opacity = '0';
-            }
-        });
-        // 页面加载时检查滚动位置
-        window.addEventListener('load', function() {
-            const footer = document.getElementById('footer');
-            const scrollPosition = window.innerHeight + window.pageYOffset;
-            const totalHeight = document.documentElement.scrollHeight;
-            if (scrollPosition >= totalHeight - 50) {
-                footer.style.opacity = '1';
-            }
-        });
-    </script>
 </body>
 </html>

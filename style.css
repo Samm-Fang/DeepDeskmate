@@ -102,6 +102,15 @@ h1 {
     font-weight: 700;
 }
 
+#main-logo {
+    max-height: 130px; /* 您可以根据需要调整这个值 */
+    margin-top: -3px; /* 适当的顶部间距 */
+    margin-left: 20px; /* 适当的左侧间距 */
+    margin-bottom: -30px;
+    width: auto;
+    display: block; /* 如果需要，可以帮助对齐 */
+}
+
 /* 通用 Section 样式 */
 .settings-section,
 .input-section,
@@ -561,19 +570,18 @@ button:disabled {
 
 .output-section {
     /* display: flex; flex-direction: column; is already set by generic section styles */
-    flex-shrink: 1; /* 允许人员信息表根据座位列表生成器的高度进行调整 */
-    flex-basis: 45%; /* Default basis, can be adjusted */
-    /* min-width: 320px; Already set */
-    transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, flex-basis 0.3s ease-in-out;
+    flex: 1 1 50%; /* grow, shrink, basis - for 50/50 split when not collapsed */
+    min-width: 320px; /* Keep a min-width for responsiveness */
+    transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, flex 0.3s ease-in-out; /* Updated transition */
     overflow-y: auto; /* 人员信息表在空间不足时显示滚动条 */
     align-self: stretch; /* Make output-section stretch to the height of table-generator-section */
 }
 
 .table-generator-section {
-    /* flex-grow: 1; Removed, height will be determined by content */
-    min-width: 320px; 
+    flex: 1 1 50%; /* grow, shrink, basis - for 50/50 split when not collapsed */
+    min-width: 320px;
+    transition: flex 0.3s ease-in-out; /* Updated transition */
     /* display: flex; flex-direction: column; is already set by generic section styles */
-    /* flex-shrink: 0; Removed to allow content to define height */
 }
 
 
@@ -630,7 +638,12 @@ button:disabled {
     word-wrap: break-word;
     max-height: 200px;
     overflow-y: auto;
-    background-color: transparent; 
+    /* New/Modified properties */
+    overflow-x: auto; /* Add horizontal scroll if content is too wide */
+    max-width: 100%; /* Ensure pre does not exceed its container's width */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+    /* End New/Modified properties */
+    background-color: transparent;
     padding: 10px;
     border-radius: 6px;
     font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
@@ -657,7 +670,8 @@ button:disabled {
     display: none; 
     opacity: 0; 
     transition: opacity 0.3s ease-in-out;
-    flex-shrink: 0; /* Prevent shrinking if content is small */
+    flex-shrink: 0; /* 思考过程区域不可压缩 */
+    overflow-x: hidden; /* Prevent horizontal overflow from children */
 }
 .agent-thinking-output.thinking-output-visible { /* To show it */
     display: block !important;
@@ -766,11 +780,28 @@ button:disabled {
 
 .sidebar-header {
     display: flex;
-    justify-content: space-between;
+    /* justify-content: space-between; /* Adjusted for new close button */
     align-items: center;
     padding-bottom: 10px;
     border-bottom: 2px solid #3498db;
     margin-bottom: 0; 
+}
+
+.close-sidebar-button {
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 28px;
+    font-weight: normal;
+    line-height: 1;
+    padding: 0;
+    margin-right: 10px;
+    cursor: pointer;
+    align-self: center;
+}
+
+.close-sidebar-button:hover {
+    color: #333;
 }
 
 .sidebar-header h2 {
@@ -779,9 +810,10 @@ button:disabled {
     color: #34495e;
     border-bottom: none;
     padding-bottom: 0;
+    /* flex-grow: 1; /* Optional: if title needs to expand */
 }
 
-.sidebar .close-button { 
+.sidebar .close-button { /* This rule seems to be for a different close button, keeping it for now but the new one is .close-sidebar-button */
      color: #999;
      font-size: 26px;
      font-weight: bold;
@@ -1371,13 +1403,11 @@ button.danger-button:hover { background-color: #c0392b; }
 
 
 .output-section.personnel-collapsed {
-    width: 90px; /* Adjusted for narrower view */
-    max-width: 150px; /* Adjusted max-width */
-    min-width: 70px; /* Adjusted min-width */
-    padding: 10px 3px; /* Adjusted padding slightly */
-    /* flex-basis: 100px; Removed */ 
-    flex-grow: 0; 
-    flex-shrink: 0; 
+    width: 110px; /* Increased width */
+    max-width: 120px; /* Consistent with new width */
+    min-width: 100px; /* Consistent with new width, or adjust as needed */
+    padding: 10px 5px; /* Adjusted padding slightly */
+    flex: 0 0 150px; /* Do not grow, do not shrink, basis is 150px */
     min-height: 100px; /* Explicit small min-height when collapsed */
     /* min-height: 800px; will apply unless overridden by media query */
 }
@@ -1495,13 +1525,13 @@ button.danger-button:hover { background-color: #c0392b; }
 
 /* Adjust table generator section when personnel list is collapsed */
 .content-wrapper.personnel-list-collapsed .table-generator-section { /* 确保此规则存在且正确 */
-    flex-grow: 1; 
-    width: auto; 
+    flex-grow: 1;
+    flex-shrink: 1; /* Allow shrinking if needed */
+    flex-basis: auto; /* Take up remaining space */
+    width: auto; /* Let flexbox determine width */
 }
 
-.content-wrapper:not(.personnel-list-collapsed) .table-generator-section {
-    flex-grow: 0; 
-}
+/* Removed .content-wrapper:not(.personnel-list-collapsed) .table-generator-section rule as it's handled by the default .table-generator-section flex property */
 
 
 /* Ensure the controls button for toggle has appropriate styling if needed */

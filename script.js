@@ -420,12 +420,14 @@ function manageSidebarState() {
 if (sidebarToggleButton && settingsSidebar && mainContainer && agentSidebar) {
     sidebarToggleButton.addEventListener('click', (event) => {
         event.stopPropagation();
-        const isSettingsCurrentlyOpen = settingsSidebar.classList.contains('open');
-        
-        if (agentSidebar.classList.contains('open')) {
-            agentSidebar.classList.remove('open'); // Close other sidebar
+        if (settingsSidebar.classList.contains('open')) {
+            settingsSidebar.classList.remove('open');
+        } else {
+            if (agentSidebar.classList.contains('open')) {
+                agentSidebar.classList.remove('open');
+            }
+            settingsSidebar.classList.add('open');
         }
-        settingsSidebar.classList.toggle('open');
         manageSidebarState();
     });
 }
@@ -433,34 +435,33 @@ if (sidebarToggleButton && settingsSidebar && mainContainer && agentSidebar) {
 if (agentToggleButton && agentSidebar && mainContainer && settingsSidebar) {
     agentToggleButton.addEventListener('click', (event) => {
         event.stopPropagation();
-        const isAgentCurrentlyOpen = agentSidebar.classList.contains('open');
-
-        if (settingsSidebar.classList.contains('open')) {
-            settingsSidebar.classList.remove('open'); // Close other sidebar
+        if (agentSidebar.classList.contains('open')) {
+            agentSidebar.classList.remove('open');
+        } else {
+            if (settingsSidebar.classList.contains('open')) {
+                settingsSidebar.classList.remove('open');
+            }
+            agentSidebar.classList.add('open');
         }
-        agentSidebar.classList.toggle('open');
         manageSidebarState();
     });
 }
 
-// Close sidebars if clicking outside
-document.addEventListener('click', (event) => {
-    let stateChanged = false;
-    if (settingsSidebar.classList.contains('open') && 
-        !settingsSidebar.contains(event.target) && !sidebarToggleButton.contains(event.target)) {
-        settingsSidebar.classList.remove('open');
-        stateChanged = true;
-    }
-    if (agentSidebar.classList.contains('open') && 
-        !agentSidebar.contains(event.target) && !agentToggleButton.contains(event.target)) {
-        agentSidebar.classList.remove('open');
-        stateChanged = true;
-    }
-
-    if (stateChanged) {
-        manageSidebarState();
-    }
+// Add event listeners for new close buttons in sidebars
+const closeSidebarButtons = document.querySelectorAll('.close-sidebar-button');
+closeSidebarButtons.forEach(button => {
+    button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const sidebarToClose = button.closest('.sidebar');
+        if (sidebarToClose && sidebarToClose.classList.contains('open')) {
+            sidebarToClose.classList.remove('open');
+            manageSidebarState();
+        }
+    });
 });
+
+// Removed: Click outside to close logic
+// document.addEventListener('click', (event) => { ... });
 
 
 // 提供商配置事件

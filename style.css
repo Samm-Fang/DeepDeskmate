@@ -124,6 +124,7 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 15px; /* Consistent gap within sections */
+    border-left: 4px solid #7CB9E8; /* 新增蓝色左描边 */
 }
 
 h2 {
@@ -784,24 +785,27 @@ button:disabled {
     align-items: center;
     padding-bottom: 10px;
     border-bottom: 2px solid #3498db;
-    margin-bottom: 0; 
+    margin-bottom: 0;
+    /* position: relative; /* Ensure header can be a positioning context if needed, but button is now outside */
 }
 
 .close-sidebar-button {
+    position: absolute;
+    top: 20px; /* Adjusted to be relative to sidebar padding */
+    left: 20px; /* Adjusted to be relative to sidebar padding */
     background: transparent;
     border: none;
-    color: #888;
+    color: #555;
     font-size: 28px;
-    font-weight: normal;
+    font-weight: bold;
     line-height: 1;
     padding: 0;
-    margin-right: 10px;
     cursor: pointer;
-    align-self: center;
+    z-index: 1005; /* Ensure it's above sidebar content, but sidebar itself is 1000 */
 }
 
 .close-sidebar-button:hover {
-    color: #333;
+    color: #000;
 }
 
 .sidebar-header h2 {

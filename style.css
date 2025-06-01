@@ -526,8 +526,11 @@ button:disabled {
     border-collapse: separate;
     border-spacing: 0;
     margin-top: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid #ddd; /* Default border for all sides */
     border-radius: 6px;
+    border-right: 3px solid rgba(74, 112, 165, 0.5); /* Deep blue, 50% opacity */
+    border-bottom: 3px solid rgba(74, 112, 165, 0.5); /* Deep blue, 50% opacity */
+    /* Adjust padding if border makes content too close to edge, or use box-sizing: border-box if not already default for tables */
 }
 
 #markdown-output th, #markdown-output td, #table-preview th, #table-preview td {
@@ -791,17 +794,17 @@ button:disabled {
 
 .close-sidebar-button {
     position: absolute;
-    top: 20px; /* Adjusted to be relative to sidebar padding */
-    left: 20px; /* Adjusted to be relative to sidebar padding */
+    top: 25px; /* Vertically align with header text */
+    right: 20px; /* Position to the top-right */
     background: transparent;
     border: none;
     color: #555;
-    font-size: 28px;
+    font-size: 28px; /* Size of the '×' character */
     font-weight: bold;
-    line-height: 1;
+    line-height: 1; /* Ensure tight vertical fit */
     padding: 0;
     cursor: pointer;
-    z-index: 1005; /* Ensure it's above sidebar content, but sidebar itself is 1000 */
+    z-index: 1005; 
 }
 
 .close-sidebar-button:hover {

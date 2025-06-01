@@ -73,7 +73,8 @@ body {
 .container { /* Main content area */
     flex-grow: 1;
     background-color: #ffffff;
-    padding: 30px;
+    padding: 30px; /* Original padding */
+    padding-bottom: 200px; /* Increased padding-bottom for background image space, adjust 200px as needed */
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -83,6 +84,10 @@ body {
     transition: margin-right 0.3s ease-in-out, width 0.3s ease-in-out; /* 修改过渡属性 */
     width: 100%; /* 初始宽度 */
     /* margin-right will be controlled by JS directly on style for width adjustment */
+    background-image: url('images/background.png');
+    background-repeat: no-repeat;
+    background-position: center bottom;
+    background-size: contain; /* Or adjust as needed, e.g., auto 150px */
 }
 /* .app-wrapper.sidebar-visible .container is no longer needed in this form */
 /* .container.sidebar-open-content-shift class will be used by JS to adjust mainContainer style.width */
@@ -282,17 +287,31 @@ button:disabled {
     flex-shrink: 0; /* 输入区域不可压缩 */
 }
 
-.personnel-controls {
+.personnel-controls { /* This is for .output-section .controls */
     display: flex;
     gap: 10px;
-    margin-top: 10px; /* 与上方输入区域的间距 */
-    margin-bottom: 10px; /* 与下方加载提示或表格的间距 */
-    flex-shrink: 0; /* 按钮区域不可压缩 */
+    margin-top: 10px; 
+    margin-bottom: 10px; 
+    flex-shrink: 0; 
 }
 
-.personnel-controls button {
-    flex-grow: 1; 
+.personnel-controls button { /* Buttons inside .output-section .controls */
+    flex: 1 1 0; /* Allow buttons to grow and shrink equally, basis 0 */
 }
+
+/* New style for subheaders with buttons */
+.section-subheader-with-button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px; /* Adjust as needed */
+}
+.section-subheader-with-button h3 {
+    margin-bottom: 0; /* Remove bottom margin from h3 inside this container */
+    font-size: 1.2rem; /* Consistent with other similar h3s */
+    color: #34495e;
+}
+/* .inline-button class is already styled and should work here */
 
 .loading-indicator#loading-personnel {
     text-align: center;
@@ -952,15 +971,15 @@ button:disabled {
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
 
-.agent-chat-input-buttons { /* New wrapper for buttons */
+.agent-chat-input-buttons {
     display: flex;
     gap: 10px;
-    justify-content: flex-end; /* Align buttons to the right */
+    /* justify-content: flex-end; /* Removed to allow buttons to fill width */
 }
 
 .agent-chat-input-buttons button {
-    flex-grow: 0; /* Buttons don't grow */
-    padding: 8px 15px; /* Adjust padding */
+    flex: 1 1 0; /* Allow buttons to grow and shrink equally */
+    padding: 8px 15px; 
     font-size: 0.95rem;
 }
 

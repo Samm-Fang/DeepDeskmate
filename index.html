@@ -31,7 +31,7 @@
                 <div class="controls">
                     <button id="send-description">AI整理</button>
                     <button id="clear-personnel-table" class="secondary-button">清除</button>
-                    <button id="import-personnel-button" class="secondary-button">导入</button>
+                    <!-- import-personnel-button moved down -->
                     <button id="copy-personnel-info" class="secondary-button">复制</button>
                     <!-- toggle-personnel-list button moved up -->
                 </div>
@@ -48,9 +48,11 @@
                 </div>
                 
                 <div class="import-personnel-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
-                    <h3>导入人员信息表 (Markdown格式)</h3>
+                    <div class="section-subheader-with-button">
+                        <h3>导入人员信息表 (Markdown格式)</h3>
+                        <button id="import-personnel-button" class="secondary-button inline-button">导入</button>
+                    </div>
                     <textarea id="import-personnel-markdown" rows="6" placeholder="在此粘贴人员信息的Markdown表格，例如：\n| 人物 | 性别 | 备注 |\n| --- | --- | --- |\n| 张三 | 男 | 技术部 |\n| 李四 | 女 | 产品部 |"></textarea>
-                    <!-- 导入按钮已移到上面的 controls div -->
                 </div>
             </div>
 
@@ -105,9 +107,11 @@
                 <div id="table-preview"></div>
 
                 <div class="import-seat-table-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
-                    <h3>导入座位表 (Markdown格式)</h3>
+                    <div class="section-subheader-with-button">
+                        <h3>导入座位表 (Markdown格式)</h3>
+                        <button id="import-seat-table-button" class="secondary-button inline-button">导入</button>
+                    </div>
                     <textarea id="import-seat-table-markdown" rows="6" placeholder="在此粘贴座位表的Markdown，AI将基于此进行修改。"></textarea>
-                    <button id="import-seat-table-button" class="secondary-button">导入座位表</button>
                 </div>
             </div>
         </div>
@@ -181,11 +185,13 @@
             </div>
             <!-- 提供商配置板块 -->
             <div class="config-section provider-settings">
-                <h3>提供商配置</h3>
+                <div class="section-subheader-with-button">
+                    <h3>提供商配置</h3>
+                    <button id="add-provider-button" class="inline-button">添加提供商</button>
+                </div>
                 <div id="provider-list">
                     <!-- 提供商条目将在这里动态添加 -->
                 </div>
-                <button id="add-provider-button">添加提供商</button>
             </div>
         </div>
     </aside>

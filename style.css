@@ -491,10 +491,6 @@ button:disabled {
 
 /* 如果之前#seat-modification-section有特定的边距/内边距/边框覆盖，现在移除它们，除非确实需要 */
 #seat-modification-section {
-    margin-top: 0 !important; 
-    padding-top: 0 !important;
-    border-top: none !important;
-    /* 保持其他需要的样式，或依赖上面的通用样式 */
     padding: 15px; /* 确保内边距一致 */
     border: 1px solid #e0e0e0; /* 确保边框一致 */
     border-radius: 8px;

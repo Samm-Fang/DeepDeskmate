@@ -35,7 +35,7 @@ body {
     right: 20px; /* Will be relative to .container-wrapper */
     width: 50px;
     height: 50px;
-    background-color: #3498db;
+    background-color: #3d5aff;
     color: white;
     border: none;
     border-radius: 50%;
@@ -50,7 +50,7 @@ body {
 }
 
 .sidebar-toggle-button:hover {
-    background-color: #2980b9;
+    background-color: #3451d2;
 }
 
 /* 设置按钮位置 (ID specific for clarity) */
@@ -62,11 +62,11 @@ body {
 #open-agent-button {
     bottom: 80px; /* 20px (settings button bottom) + 50px (settings button height) + 10px (gap) */
     /* right: 20px; is default from .sidebar-toggle-button */
-    background-color: #e74c3c; /* 不同的颜色区分 */
+    background-color: #5f84ff; /* 不同的颜色区分 */
 }
 
 #open-agent-button:hover {
-    background-color: #c0392b;
+    background-color: #3653d3;
 }
 
 
@@ -129,7 +129,7 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 15px; /* Consistent gap within sections */
-    border-left: 4px solid #7CB9E8; /* 新增蓝色左描边 */
+    border-left: 4px solid #4170ffcc; /* 新增蓝色左描边 */
 }
 
 h2 {
@@ -137,7 +137,7 @@ h2 {
     margin-top: 0;
     margin-bottom: 15px;
     font-size: 1.7rem;
-    border-bottom: 2px solid #3498db;
+    border-bottom: 2px solid #417ceb;
     padding-bottom: 8px;
 }
 
@@ -145,7 +145,7 @@ label {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
-    color: #555;
+    color: #5f626b;
     font-size: 1rem;
 }
 
@@ -166,8 +166,8 @@ select {
 input:focus,
 textarea:focus,
 select:focus {
-    border-color: #3498db;
-    box-shadow: 0 0 8px rgba(52, 152, 219, 0.25);
+    border-color: #417ceb;
+    box-shadow: 0 0 8px rgba(65, 124, 235, 0.25);
     outline: none;
 }
 
@@ -177,7 +177,7 @@ textarea {
 }
 
 button {
-    background-color: #3498db;
+    background-color: #417ceb;
     color: #ffffff;
     border: none;
     padding: 10px 18px;
@@ -190,7 +190,7 @@ button {
 }
 
 button:hover {
-    background-color: #2980b9;
+    background-color: #3562d4;
 }
 
 button:disabled {
@@ -257,7 +257,7 @@ button:disabled {
     line-height: 1; 
     padding: 5px 8px; /* Adjusted padding for a smaller icon button */
     background-color: transparent; /* Make it less obtrusive */
-    color: #555;
+    color: #5f626b;
     border: 1px solid #ccc;
 }
 .toggle-list-button:hover {
@@ -375,7 +375,7 @@ button:disabled {
 }
 .seat-modification-section p {
     font-size: 0.9rem;
-    color: #555;
+    color: #5f626b;
     margin-top: 0;
     margin-bottom: 5px;
 }
@@ -547,8 +547,8 @@ button:disabled {
     margin-top: 10px;
     border: 1px solid #ddd; /* Default border for all sides */
     border-radius: 6px;
-    border-right: 3px solid rgba(74, 112, 165, 0.5); /* Deep blue, 50% opacity */
-    border-bottom: 3px solid rgba(74, 112, 165, 0.5); /* Deep blue, 50% opacity */
+    border-right: 3px solid rgb(132 180 255 / 70%); /* Deep blue, 50% opacity */
+    border-bottom: 3px solid rgb(132 180 255 / 70%); /* Deep blue, 50% opacity */
     /* Adjust padding if border makes content too close to edge, or use box-sizing: border-box if not already default for tables */
 }
 
@@ -649,7 +649,7 @@ button:disabled {
     margin-top: 0;
     margin-bottom: 10px;
     font-size: 1.1rem;
-    color: #555; 
+    color: #5f626b; 
     border-bottom: 1px solid #ddd;
     padding-bottom: 5px;
 }
@@ -704,7 +704,7 @@ button:disabled {
     margin-top: 0;
     margin-bottom: 8px;
     font-size: 1rem; /* Slightly smaller for sidebar context */
-    color: #555; 
+    color: #5f626b; 
     border-bottom: 1px solid #ddd;
     padding-bottom: 4px;
 }
@@ -738,7 +738,7 @@ button:disabled {
 .seat-mod-empty { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; } 
 .seat-mod-fill { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; } 
 .seat-mod-error { background-color: #f8d7da; color: #721c24; font-weight: normal; } 
-.seat-mod-message { color: #555; font-style: italic; } 
+.seat-mod-message { color: #5f626b; font-style: italic; } 
 
 
 /* Footer */
@@ -761,7 +761,7 @@ button:disabled {
 }
 
 #footer a {
-    color: #3498db;
+    color: #417ceb;
     text-decoration: none;
 }
 
@@ -806,7 +806,7 @@ button:disabled {
     /* justify-content: space-between; /* Adjusted for new close button */
     align-items: center;
     padding-bottom: 10px;
-    border-bottom: 2px solid #3498db;
+    border-bottom: 2px solid #417ceb;
     margin-bottom: 0;
     /* position: relative; /* Ensure header can be a positioning context if needed, but button is now outside */
 }
@@ -817,7 +817,7 @@ button:disabled {
     right: 20px; /* Position to the top-right */
     background: transparent;
     border: none;
-    color: #555;
+    color: #5f626b;
     font-size: 28px; /* Size of the '×' character */
     font-weight: bold;
     line-height: 1; /* Ensure tight vertical fit */
@@ -861,6 +861,23 @@ button:disabled {
     height: 100%;
     display: flex;
     flex-direction: column;
+    position: relative; /* Needed for ::before positioning */
+    overflow: hidden; /* To contain the pseudo-element if it's larger */
+}
+
+.agent-chat-section::before {
+    content: "";
+    position: absolute;
+    bottom: 190px;  /* 显著向上移动，使其底部在输入框附近 */
+    right: -150px; /* 配合cover和新的宽高调整 */
+    width: 400px;   /* 调整伪元素尺寸 */
+    height: 390px;  /* 调整伪元素尺寸 */
+    background-image: url('images/logo.png');
+    background-repeat: no-repeat;
+    background-size: cover; /* 改为cover以填充并消除白边，可能会裁剪 */
+    opacity: 0.3;
+    z-index: -1; /* 置于父元素背景之下 */
+    pointer-events: none; /* 确保不干扰点击 */
 }
 
 .agent-chat-container {
@@ -880,7 +897,9 @@ button:disabled {
     margin-bottom: 15px; /* Keep space before input area */
     display: flex;
     flex-direction: column; 
-    gap: 12px; 
+    gap: 12px;
+    position: relative; /* Ensure messages are above the ::before pseudo-element of parent */
+    z-index: 1;
 }
 
 .agent-message {
@@ -932,7 +951,7 @@ button:disabled {
     align-items: center;
     margin-bottom: 6px; /* Space between header and content */
     font-size: 0.85rem;
-    color: #555;
+    color: #5f626b;
 }
 .agent-message-header strong {
     font-weight: 600;
@@ -951,6 +970,8 @@ button:disabled {
 
 .agent-chat-input-area {
     flex-shrink: 0;
+    position: relative; /* Ensure it's above the ::before pseudo-element */
+    z-index: 1;         /* Ensure it's above the ::before pseudo-element */
     padding-top: 15px; /* Add some space above input area */
     border-top: 1px solid #e0e0e0; /* Separator line */
     background-color: #fdfdfd; /* Match sidebar background */
@@ -1200,8 +1221,8 @@ button:disabled {
     box-sizing: border-box;
 }
 .custom-select-dropdown .model-search-input:focus {
-    border-color: #3498db;
-    box-shadow: 0 0 6px rgba(52, 152, 219, 0.2);
+    border-color: #417ceb;
+    box-shadow: 0 0 6px rgba(65, 124, 235, 0.2);
     outline: none;
 }
 
@@ -1222,7 +1243,7 @@ button:disabled {
 
 .custom-options-list li:hover,
 .custom-options-list li.selected { 
-    background-color: #e9ecef;
+    background-color: #d6eaff; /* 改为浅蓝色 */
 }
 .custom-options-list li.hidden-by-search {
     display: none;
@@ -1262,12 +1283,12 @@ button:disabled {
     font-size: 0.9rem;
 }
 
-button.primary-button { background-color: #3498db; }
-button.primary-button:hover { background-color: #2980b9; }
-button.primary-button:disabled { background-color: #a9d7f4; color: #777; }
+button.primary-button { background-color: #417ceb; }
+button.primary-button:hover { background-color: #3562d4; }
+button.primary-button:disabled { background-color: #d7dffc; color: #777; }
 
 
-button.secondary-button { background-color: #95a5a6; }
+button.secondary-button { background-color: #9fafc0; }
 button.secondary-button:hover { background-color: #7f8c8d; }
 
 button.danger-button { background-color: #e74c3c; }

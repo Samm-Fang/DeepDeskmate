@@ -86,8 +86,8 @@ body {
     /* margin-right will be controlled by JS directly on style for width adjustment */
     background-image: url('images/background.png');
     background-repeat: no-repeat;
-    background-position: center bottom;
-    background-size: contain; /* Or adjust as needed, e.g., auto 150px */
+    background-position: center center;
+    background-size: cover; /* Or adjust as needed, e.g., auto 150px */
 }
 /* .app-wrapper.sidebar-visible .container is no longer needed in this form */
 /* .container.sidebar-open-content-shift class will be used by JS to adjust mainContainer style.width */

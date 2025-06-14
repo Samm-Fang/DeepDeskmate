@@ -1,39 +1,27 @@
 // --- Streaming GIF Management ---
 let gifIntervals = {}; // Store intervals for each GIF element
 
-function updateGifPosition(contentElement, gifElement) {
+function updateGifPosition(contentElement, gifElement, mode = 'full-follow') {
     if (!contentElement || !gifElement || gifElement.style.display === 'none') {
         return;
     }
 
     const cursor = contentElement.querySelector('.streaming-cursor');
     if (cursor) {
-        const containerRect = contentElement.getBoundingClientRect();
-        const cursorRect = cursor.getBoundingClientRect();
-
-        // Calculate position relative to the container's viewport visible area
-        let left = cursorRect.left - containerRect.left;
-        let top = cursorRect.top - containerRect.top;
-
-        // Add scroll offsets to get position relative to the full scrollable content
-        left += contentElement.scrollLeft;
-        top += contentElement.scrollTop;
-
-        // Boundary check to ensure GIF does not go outside the scrollable area
-        const gifWidth = gifElement.offsetWidth;
-        const gifHeight = gifElement.offsetHeight;
-        
-        left = Math.max(0, Math.min(left, contentElement.scrollWidth - gifWidth));
-        top = Math.max(0, Math.min(top, contentElement.scrollHeight - gifHeight));
-
-
-        gifElement.style.left = `${left}px`;
-        gifElement.style.top = `${top}px`;
+        if (mode === 'bottom-follow') {
+            // Y-axis is fixed to the bottom by CSS, only update X-axis
+            gifElement.style.left = `${cursor.offsetLeft}px`;
+            gifElement.style.top = ''; // Let CSS handle the 'bottom' property
+        } else { // 'full-follow'
+            gifElement.style.bottom = ''; // Remove bottom positioning
+            gifElement.style.left = `${cursor.offsetLeft}px`;
+            gifElement.style.top = `${cursor.offsetTop}px`;
+        }
     }
 }
 
 
-function manageStreamingGif(contentElement, gifElement, action) {
+function manageStreamingGif(contentElement, gifElement, action, mode = 'full-follow') {
     if (!gifElement) return;
 
     const gifId = gifElement.id || gifElement.src; // Unique ID for the interval
@@ -47,9 +35,16 @@ function manageStreamingGif(contentElement, gifElement, action) {
             clearInterval(gifIntervals[gifId]);
         }
 
+        // Add the correct class for the mode
+        if (mode === 'bottom-follow') {
+            gifElement.classList.add('thinking-mode');
+        } else {
+            gifElement.classList.remove('thinking-mode');
+        }
+
         // Start a new interval to update position
         gifIntervals[gifId] = setInterval(() => {
-            updateGifPosition(contentElement, gifElement);
+            updateGifPosition(contentElement, gifElement, mode);
         }, 50); // Update position every 50ms
 
     } else if (action === 'end') {
@@ -780,7 +775,7 @@ sendDescriptionButton.addEventListener('click', async () => {
         personnelThinkingPre.textContent = '';
         personnelThinkingOutputDiv.classList.remove('thinking-output-visible');
         const thinkingGif = personnelThinkingOutputDiv.querySelector('.streaming-gif');
-        manageStreamingGif(personnelThinkingPre, thinkingGif, 'start');
+        manageStreamingGif(personnelThinkingPre, thinkingGif, 'start', 'bottom-follow');
     }
 
     const systemPrompt = `
@@ -1389,7 +1384,7 @@ aiArrangeButton.addEventListener('click', async () => {
         aiThinkingPre.textContent = '';
         aiThinkingOutputDiv.classList.remove('thinking-output-visible');
         const thinkingGif = aiThinkingOutputDiv.querySelector('.streaming-gif');
-        manageStreamingGif(aiThinkingPre, thinkingGif, 'start');
+        manageStreamingGif(aiThinkingPre, thinkingGif, 'start', 'bottom-follow');
     }
     
     if (tablePreviewDiv.innerHTML.trim() === '' || tablePreviewDiv.textContent.includes("请输入有效") || tablePreviewDiv.textContent.includes("无法生成")) {
@@ -1870,7 +1865,7 @@ if (sendSeatModificationButton) {
             seatModifyThinkingPre.textContent = '';
             seatModifyThinkingOutputDiv.classList.remove('thinking-output-visible');
             const thinkingGif = seatModifyThinkingOutputDiv.querySelector('.streaming-gif');
-            manageStreamingGif(seatModifyThinkingPre, thinkingGif, 'start');
+            manageStreamingGif(seatModifyThinkingPre, thinkingGif, 'start', 'bottom-follow');
         }
         sendSeatModificationButton.disabled = true;
 
@@ -2465,7 +2460,11 @@ async function sendAgentMessage() {
     agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
 
     const agentGif = document.getElementById('agent-streaming-gif');
-    manageStreamingGif(aiMessageContentDiv, agentGif, 'start');
+    // For agent, thinking and generating are handled differently.
+    // Start with fixed position, then switch to full-follow.
+    agentGif.classList.add('thinking-mode'); // Start fixed at bottom-left
+    manageStreamingGif(aiMessageContentDiv, agentGif, 'start', 'bottom-follow');
+
 
     try {
         // 构建请求消息
@@ -2536,9 +2535,11 @@ async function sendAgentMessage() {
                             }
                             if (contentChunk) {
                                 // If we were showing reasoning, clear it or replace it when actual content arrives
-                                if (aiMessageContentDiv.querySelector('pre')) {
-                                    aiMessageContentDiv.innerHTML = ''; // Clear reasoning once content starts
-                                    accumulatedAiResponse = ''; // Reset accumulated response
+                                if (aiMessageContentDiv.querySelector('pre') || aiMessageContentDiv.textContent.includes('AI 正在思考中...')) {
+                                    aiMessageContentDiv.innerHTML = ''; // Clear reasoning/thinking message
+                                    accumulatedAiResponse = ''; // Reset
+                                    // Switch GIF to full-follow mode
+                                    manageStreamingGif(aiMessageContentDiv, agentGif, 'start', 'full-follow');
                                 }
                                 accumulatedAiResponse += contentChunk;
                                 let currentHtml = marked.parse(accumulatedAiResponse);

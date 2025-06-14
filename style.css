@@ -1616,7 +1616,13 @@ button.danger-button:hover { background-color: #c0392b; }
     transition: opacity 0.3s ease-in-out, top 0.1s linear, left 0.1s linear; /* Smooth movement */
     pointer-events: none; /* So it doesn't interfere with mouse events */
     z-index: 10;
-    transform: translate(-50%, -50%); /* Center the gif on the cursor position */
+    /* transform: translate(-50%, -50%); /* Removed for simpler positioning */
+}
+
+.streaming-gif.thinking-mode {
+    bottom: 5px;
+    left: 5px;
+    transform: none; /* Override transform for this mode */
 }
 
 .streaming-gif.visible {

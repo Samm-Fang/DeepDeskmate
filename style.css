@@ -387,6 +387,7 @@ button:disabled {
     width: auto;
 }
 #seat-modification-output {
+    position: relative; /* Ensure this is a positioning context for the GIF */
     font-size: 0.9rem;
     white-space: pre-wrap; 
     padding: 15px; /* Added padding to match thinking output */
@@ -526,6 +527,7 @@ button:disabled {
 
 /* Specific styles for #table-preview to handle vertical growth and scrolling */
 #table-preview {
+    position: relative; /* Ensure this is a positioning context for the GIF */
     /* flex-grow: 1; Removed as per new requirement */
     /* overflow-y: auto; Removed to allow content to define height */
     /* min-height: 0; Removed to allow content to define height */
@@ -622,6 +624,7 @@ button:disabled {
 #ai-thinking-output,
 .personnel-thinking-output,
 .seat-modify-thinking-output {
+    position: relative; /* Ensure this is a positioning context for the GIF */
     padding: 15px;
     background-color: transparent; 
     border: 2px dashed #cccccc; 
@@ -884,6 +887,7 @@ button:disabled {
 }
 
 .agent-chat-messages {
+    position: relative; /* Ensure this is a positioning context for the GIF */
     flex-grow: 1;
     /* border: 1px solid #e0e0e0; Removed border */
     /* border-radius: 8px; Removed border-radius */
@@ -1419,6 +1423,7 @@ button.danger-button:hover { background-color: #c0392b; }
 
 /* Personnel List Collapsing Styles */
 .personnel-list-wrapper {
+    position: relative; /* Ensure this is a positioning context for the GIF */
     transition: width 0.3s ease-in-out, padding 0.3s ease-in-out;
     overflow: hidden; 
     width: 100%; 
@@ -1605,12 +1610,13 @@ button.danger-button:hover { background-color: #c0392b; }
 /* Streaming GIF styles */
 .streaming-gif {
     position: absolute;
-    width: 50px; /* or any size you prefer */
-    height: 50px; /* or any size you prefer */
+    width: 30px; /* Smaller size */
+    height: 30px; /* Smaller size */
     opacity: 0;
-    transition: opacity 0.3s ease-in-out;
+    transition: opacity 0.3s ease-in-out, top 0.1s linear, left 0.1s linear; /* Smooth movement */
     pointer-events: none; /* So it doesn't interfere with mouse events */
     z-index: 10;
+    transform: translate(-50%, -50%); /* Center the gif on the cursor position */
 }
 
 .streaming-gif.visible {

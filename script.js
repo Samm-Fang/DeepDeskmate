@@ -6,28 +6,18 @@ function updateGifPosition(contentElement, gifElement) {
         return;
     }
 
-    // For PRE tags, we can append a span to get the end position
-    if (contentElement.tagName === 'PRE') {
-        let tempSpan = contentElement.querySelector('.cursor-tracker');
-        if (!tempSpan) {
-            tempSpan = document.createElement('span');
-            tempSpan.className = 'cursor-tracker';
-            contentElement.appendChild(tempSpan);
-        }
-        // Position the GIF at the span's location
-        gifElement.style.left = `${tempSpan.offsetLeft}px`;
-        gifElement.style.top = `${tempSpan.offsetTop}px`;
-    } else {
-        // For other elements (like divs with rendered markdown), find the last element
-        const lastChild = contentElement.lastElementChild;
-        if (lastChild) {
-            gifElement.style.left = `${lastChild.offsetLeft + lastChild.offsetWidth}px`;
-            gifElement.style.top = `${lastChild.offsetTop}px`;
-        } else {
-            // Fallback for text-only content
-            gifElement.style.left = '0px';
-            gifElement.style.top = `${contentElement.scrollHeight}px`;
-        }
+    // Find the cursor span which is appended at the end of the stream
+    const cursor = contentElement.querySelector('.streaming-cursor');
+    if (cursor) {
+        const containerRect = contentElement.getBoundingClientRect();
+        const cursorRect = cursor.getBoundingClientRect();
+
+        // Calculate position relative to the container, including scroll offsets
+        let left = cursorRect.left - containerRect.left + contentElement.scrollLeft;
+        let top = cursorRect.top - containerRect.top + contentElement.scrollTop;
+
+        gifElement.style.left = `${left}px`;
+        gifElement.style.top = `${top}px`;
     }
 }
 
@@ -863,18 +853,20 @@ ${personnelDataToMarkdown(personnelData)}
                         const reasoningContent = delta?.reasoning_content || delta?.reasoning;
                         const outputContent = delta?.content;
 
-                        if (outputContent) {
-                            // Stop thinking GIF and start generating GIF once content arrives
-                            if (personnelThinkingOutputDiv) {
-                                const thinkingGif = personnelThinkingOutputDiv.querySelector('.streaming-gif');
-                                manageStreamingGif(null, thinkingGif, 'end');
-                            }
-                            const generatingGif = markdownOutputDiv.querySelector('.streaming-gif');
-                            manageStreamingGif(markdownOutputDiv, generatingGif, 'start');
+                            if (outputContent) {
+                                if (personnelThinkingOutputDiv && personnelThinkingOutputDiv.classList.contains('thinking-output-visible')) {
+                                    const thinkingGif = personnelThinkingOutputDiv.querySelector('.streaming-gif');
+                                    manageStreamingGif(null, thinkingGif, 'end');
+                                    personnelThinkingOutputDiv.classList.remove('thinking-output-visible');
+                                }
+                                const generatingGif = markdownOutputWrapper.querySelector('.streaming-gif');
+                                if (generatingGif.style.display === 'none') {
+                                    manageStreamingGif(markdownOutputDiv, generatingGif, 'start');
+                                }
 
-                            fullResponseForHistory += outputContent;
+                                fullResponseForHistory += outputContent;
 
-                            if (!inChangesBlock) {
+                                if (!inChangesBlock) {
                                 if (outputContent.includes('<changes>')) {
                                     const parts = outputContent.split('<changes>');
                                     textBeforeChanges += parts[0];
@@ -888,7 +880,7 @@ ${personnelDataToMarkdown(personnelData)}
                             } else {
                                 changesBlockStreamContent += outputContent;
                                 // Display raw stream within <changes>
-                                markdownOutputDiv.textContent = textBeforeChanges + "<changes>" + changesBlockStreamContent.split('</changes>')[0];
+                                markdownOutputDiv.innerHTML = textBeforeChanges + "<changes>" + changesBlockStreamContent.split('</changes>')[0] + '<span class="streaming-cursor"></span>';
                                 
                                 // Process complete lines for real-time table update
                                 let currentProcessingContent = unprocessedLinePart + changesBlockStreamContent;
@@ -983,7 +975,7 @@ ${personnelDataToMarkdown(personnelData)}
                  personnelThinkingOutputDiv.classList.remove('thinking-output-visible');
             }
         }
-        const generatingGif = markdownOutputDiv.querySelector('.streaming-gif');
+        const generatingGif = markdownOutputWrapper.querySelector('.streaming-gif');
         manageStreamingGif(null, generatingGif, 'end');
     }
 });
@@ -1486,12 +1478,15 @@ ${seatTableFormatToUse}
                         }
                         
                         if (outputContent) {
-                            if (aiThinkingOutputDiv) {
+                            if (aiThinkingOutputDiv && aiThinkingOutputDiv.classList.contains('thinking-output-visible')) {
                                 const thinkingGif = aiThinkingOutputDiv.querySelector('.streaming-gif');
                                 manageStreamingGif(null, thinkingGif, 'end');
+                                aiThinkingOutputDiv.classList.remove('thinking-output-visible');
                             }
                             const generatingGif = tablePreviewDiv.querySelector('.streaming-gif');
-                            manageStreamingGif(tablePreviewDiv, generatingGif, 'start');
+                             if (generatingGif.style.display === 'none') {
+                                manageStreamingGif(tablePreviewDiv, generatingGif, 'start');
+                            }
 
                             accumulatedContent += outputContent; 
                             const tableStartTag = "<编排好的座位表>";
@@ -1503,7 +1498,7 @@ ${seatTableFormatToUse}
                                 currentTableSegment = endIndex === -1 ? accumulatedContent.substring(startIndex) : accumulatedContent.substring(startIndex, endIndex);
                                 
                                 if (currentTableSegment.trim() && currentTableSegment.includes("|")) {
-                                    tablePreviewDiv.innerHTML = marked.parse(currentTableSegment);
+                                    tablePreviewDiv.innerHTML = marked.parse(currentTableSegment) + '<span class="streaming-cursor"></span>';
                                     applyGenderColoring(); 
                                     displayOriginalSeatNumbers(); 
                                 }
@@ -1943,13 +1938,17 @@ ${seatMappingInfo}
                                 }
                             }
                             if (outputContent) {
-                                if (seatModifyThinkingOutputDiv) {
+                                if (seatModifyThinkingOutputDiv && seatModifyThinkingOutputDiv.classList.contains('thinking-output-visible')) {
                                     const thinkingGif = seatModifyThinkingOutputDiv.querySelector('.streaming-gif');
                                     manageStreamingGif(null, thinkingGif, 'end');
+                                    seatModifyThinkingOutputDiv.classList.remove('thinking-output-visible');
                                 }
                                 const generatingGif = seatModificationOutput.querySelector('.streaming-gif');
-                                manageStreamingGif(seatModificationOutput, generatingGif, 'start');
+                                if (generatingGif.style.display === 'none') {
+                                    manageStreamingGif(seatModificationOutput, generatingGif, 'start');
+                                }
                                 accumulatedResponse += outputContent;
+                                seatModificationOutput.innerHTML = accumulatedResponse + '<span class="streaming-cursor"></span>';
                             }
                         } catch (e) { console.error('解析修改座位SSE数据块时出错:', e, '数据块:', jsonData); }
                     }
@@ -2508,7 +2507,7 @@ async function sendAgentMessage() {
                                     accumulatedAiResponse = ''; // Reset accumulated response
                                 }
                                 accumulatedAiResponse += contentChunk;
-                                aiMessageContentDiv.innerHTML = marked.parse(accumulatedAiResponse); // Render Markdown
+                                aiMessageContentDiv.innerHTML = marked.parse(accumulatedAiResponse) + '<span class="streaming-cursor"></span>'; // Render Markdown
                                 agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
                             }
                         } catch (e) {

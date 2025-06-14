@@ -6,12 +6,29 @@ function updateGifPosition(contentElement, gifElement) {
         return;
     }
 
-    // Find the cursor span which is appended at the end of the stream
     const cursor = contentElement.querySelector('.streaming-cursor');
     if (cursor) {
-        // Position the GIF at the cursor's offset position relative to its container
-        gifElement.style.left = `${cursor.offsetLeft}px`;
-        gifElement.style.top = `${cursor.offsetTop}px`;
+        const containerRect = contentElement.getBoundingClientRect();
+        const cursorRect = cursor.getBoundingClientRect();
+
+        // Calculate position relative to the container's viewport visible area
+        let left = cursorRect.left - containerRect.left;
+        let top = cursorRect.top - containerRect.top;
+
+        // Add scroll offsets to get position relative to the full scrollable content
+        left += contentElement.scrollLeft;
+        top += contentElement.scrollTop;
+
+        // Boundary check to ensure GIF does not go outside the scrollable area
+        const gifWidth = gifElement.offsetWidth;
+        const gifHeight = gifElement.offsetHeight;
+        
+        left = Math.max(0, Math.min(left, contentElement.scrollWidth - gifWidth));
+        top = Math.max(0, Math.min(top, contentElement.scrollHeight - gifHeight));
+
+
+        gifElement.style.left = `${left}px`;
+        gifElement.style.top = `${top}px`;
     }
 }
 

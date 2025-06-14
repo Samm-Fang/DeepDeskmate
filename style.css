@@ -1601,3 +1601,19 @@ button.danger-button:hover { background-color: #c0392b; }
 #table-preview td { 
     position: relative;
 }
+
+/* Streaming GIF styles */
+.streaming-gif {
+    position: absolute;
+    width: 50px; /* or any size you prefer */
+    height: 50px; /* or any size you prefer */
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    pointer-events: none; /* So it doesn't interfere with mouse events */
+    z-index: 10;
+}
+
+.streaming-gif.visible {
+    display: inline-block;
+    opacity: 1;
+}

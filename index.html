@@ -42,9 +42,12 @@
                 <div class="personnel-thinking-output"> <!-- 新增：人员信息处理的思考过程 -->
                     <h3>AI 思考过程...</h3>
                     <pre></pre>
+                    <img src="images/generating-thinking.gif" class="streaming-gif" style="display: none;" alt="AI is thinking...">
                 </div>
                 <div id="markdown-output-wrapper" class="personnel-list-wrapper"> <!-- 包裹 markdown-output -->
-                    <div id="markdown-output"></div>
+                    <div id="markdown-output">
+                        <img src="images/generating.gif" class="streaming-gif" style="display: none;" alt="AI is generating...">
+                    </div>
                 </div>
                 
                 <div class="import-personnel-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
@@ -95,16 +98,22 @@
                 <div id="ai-thinking-output"> 
                     <h3>AI 编排思考过程...</h3>
                     <pre></pre> 
+                    <img src="images/generating-thinking.gif" class="streaming-gif" style="display: none;" alt="AI is thinking...">
                 </div>
                 <!-- 座位微调的思考过程 -->
                 <div class="seat-modify-thinking-output" style="display: none;"> 
                     <h3>AI 微调思考过程...</h3>
                     <pre></pre>
+                    <img src="images/generating-thinking.gif" class="streaming-gif" style="display: none;" alt="AI is thinking...">
                 </div>
                 <!-- 座位微调结果 -->
-                <div id="seat-modification-output" style="margin-top:10px; padding:10px; border:1px dashed #ccc; border-radius:4px; display:none;"></div>
+                <div id="seat-modification-output" style="margin-top:10px; padding:10px; border:1px dashed #ccc; border-radius:4px; display:none;">
+                    <img src="images/generating.gif" class="streaming-gif" style="display: none;" alt="AI is generating...">
+                </div>
                 <!-- arrangement-actions div removed as its content moved -->
-                <div id="table-preview"></div>
+                <div id="table-preview">
+                    <img src="images/generating-table.gif" class="streaming-gif" style="display: none;" alt="AI is generating table...">
+                </div>
 
                 <div class="import-seat-table-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
                     <div class="section-subheader-with-button">
@@ -206,6 +215,7 @@
             <!-- Removed agent-thinking-output div, thinking process will be inside message bubbles -->
             <div id="agent-chat-messages" class="agent-chat-messages">
                 <!-- 消息将由JS动态添加 -->
+                <img src="images/generating-agent.gif" class="streaming-gif" id="agent-streaming-gif" style="display: none;" alt="Agent is generating...">
             </div>
             <div class="agent-chat-input-area">
                 <textarea id="agent-chat-input" placeholder="输入您的消息..." rows="3"></textarea>

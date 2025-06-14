@@ -1,3 +1,73 @@
+// --- Streaming GIF Management ---
+let gifIntervals = {}; // Store intervals for each GIF element
+
+function updateGifPosition(contentElement, gifElement) {
+    if (!contentElement || !gifElement || gifElement.style.display === 'none') {
+        return;
+    }
+
+    // For PRE tags, we can append a span to get the end position
+    if (contentElement.tagName === 'PRE') {
+        let tempSpan = contentElement.querySelector('.cursor-tracker');
+        if (!tempSpan) {
+            tempSpan = document.createElement('span');
+            tempSpan.className = 'cursor-tracker';
+            contentElement.appendChild(tempSpan);
+        }
+        // Position the GIF at the span's location
+        gifElement.style.left = `${tempSpan.offsetLeft}px`;
+        gifElement.style.top = `${tempSpan.offsetTop}px`;
+    } else {
+        // For other elements (like divs with rendered markdown), find the last element
+        const lastChild = contentElement.lastElementChild;
+        if (lastChild) {
+            gifElement.style.left = `${lastChild.offsetLeft + lastChild.offsetWidth}px`;
+            gifElement.style.top = `${lastChild.offsetTop}px`;
+        } else {
+            // Fallback for text-only content
+            gifElement.style.left = '0px';
+            gifElement.style.top = `${contentElement.scrollHeight}px`;
+        }
+    }
+}
+
+
+function manageStreamingGif(contentElement, gifElement, action) {
+    if (!gifElement) return;
+
+    const gifId = gifElement.id || gifElement.src; // Unique ID for the interval
+
+    if (action === 'start') {
+        gifElement.style.display = 'inline-block';
+        setTimeout(() => gifElement.classList.add('visible'), 10); // Fade in
+
+        // Clear any existing interval for this gif
+        if (gifIntervals[gifId]) {
+            clearInterval(gifIntervals[gifId]);
+        }
+
+        // Start a new interval to update position
+        gifIntervals[gifId] = setInterval(() => {
+            updateGifPosition(contentElement, gifElement);
+        }, 50); // Update position every 50ms
+
+    } else if (action === 'end') {
+        gifElement.classList.remove('visible'); // Fade out
+        
+        // Clear the interval
+        if (gifIntervals[gifId]) {
+            clearInterval(gifIntervals[gifId]);
+            delete gifIntervals[gifId];
+        }
+
+        // Hide the element after transition
+        setTimeout(() => {
+            gifElement.style.display = 'none';
+        }, 300); // Match CSS transition duration
+    }
+}
+
+
 // Function to show in-page notifications
 function showInPageNotification(message, type = 'info') {
     const notificationArea = document.getElementById('in-page-notification-area');
@@ -708,6 +778,8 @@ sendDescriptionButton.addEventListener('click', async () => {
     if (personnelThinkingOutputDiv && personnelThinkingPre) {
         personnelThinkingPre.textContent = '';
         personnelThinkingOutputDiv.classList.remove('thinking-output-visible');
+        const thinkingGif = personnelThinkingOutputDiv.querySelector('.streaming-gif');
+        manageStreamingGif(personnelThinkingPre, thinkingGif, 'start');
     }
 
     const systemPrompt = `
@@ -792,6 +864,14 @@ ${personnelDataToMarkdown(personnelData)}
                         const outputContent = delta?.content;
 
                         if (outputContent) {
+                            // Stop thinking GIF and start generating GIF once content arrives
+                            if (personnelThinkingOutputDiv) {
+                                const thinkingGif = personnelThinkingOutputDiv.querySelector('.streaming-gif');
+                                manageStreamingGif(null, thinkingGif, 'end');
+                            }
+                            const generatingGif = markdownOutputDiv.querySelector('.streaming-gif');
+                            manageStreamingGif(markdownOutputDiv, generatingGif, 'start');
+
                             fullResponseForHistory += outputContent;
 
                             if (!inChangesBlock) {
@@ -896,9 +976,15 @@ ${personnelDataToMarkdown(personnelData)}
         }
         sendDescriptionButton.disabled = false;
         renderPersonnelTable();
-        if (personnelThinkingOutputDiv && personnelThinkingPre && personnelThinkingPre.textContent.trim() === '') {
-            personnelThinkingOutputDiv.classList.remove('thinking-output-visible');
+        if (personnelThinkingOutputDiv) {
+            const thinkingGif = personnelThinkingOutputDiv.querySelector('.streaming-gif');
+            manageStreamingGif(null, thinkingGif, 'end');
+            if (personnelThinkingPre && personnelThinkingPre.textContent.trim() === '') {
+                 personnelThinkingOutputDiv.classList.remove('thinking-output-visible');
+            }
         }
+        const generatingGif = markdownOutputDiv.querySelector('.streaming-gif');
+        manageStreamingGif(null, generatingGif, 'end');
     }
 });
 
@@ -1291,6 +1377,8 @@ aiArrangeButton.addEventListener('click', async () => {
     if (aiThinkingOutputDiv && aiThinkingPre) {
         aiThinkingPre.textContent = '';
         aiThinkingOutputDiv.classList.remove('thinking-output-visible');
+        const thinkingGif = aiThinkingOutputDiv.querySelector('.streaming-gif');
+        manageStreamingGif(aiThinkingPre, thinkingGif, 'start');
     }
     
     if (tablePreviewDiv.innerHTML.trim() === '' || tablePreviewDiv.textContent.includes("请输入有效") || tablePreviewDiv.textContent.includes("无法生成")) {
@@ -1398,6 +1486,13 @@ ${seatTableFormatToUse}
                         }
                         
                         if (outputContent) {
+                            if (aiThinkingOutputDiv) {
+                                const thinkingGif = aiThinkingOutputDiv.querySelector('.streaming-gif');
+                                manageStreamingGif(null, thinkingGif, 'end');
+                            }
+                            const generatingGif = tablePreviewDiv.querySelector('.streaming-gif');
+                            manageStreamingGif(tablePreviewDiv, generatingGif, 'start');
+
                             accumulatedContent += outputContent; 
                             const tableStartTag = "<编排好的座位表>";
                             const tableEndTag = "</编排好的座位表>";
@@ -1465,9 +1560,15 @@ ${seatTableFormatToUse}
         }
     } finally {
         aiArrangeButton.disabled = false;
-        if (aiThinkingOutputDiv && aiThinkingPre && aiThinkingPre.textContent.trim() === '') {
-            aiThinkingOutputDiv.classList.remove('thinking-output-visible');
+        if (aiThinkingOutputDiv) {
+            const thinkingGif = aiThinkingOutputDiv.querySelector('.streaming-gif');
+            manageStreamingGif(null, thinkingGif, 'end');
+            if (aiThinkingPre && aiThinkingPre.textContent.trim() === '') {
+                aiThinkingOutputDiv.classList.remove('thinking-output-visible');
+            }
         }
+        const generatingGif = tablePreviewDiv.querySelector('.streaming-gif');
+        manageStreamingGif(null, generatingGif, 'end');
     }
 });
 
@@ -1746,6 +1847,8 @@ if (sendSeatModificationButton) {
         if (seatModifyThinkingOutputDiv && seatModifyThinkingPre) {
             seatModifyThinkingPre.textContent = '';
             seatModifyThinkingOutputDiv.classList.remove('thinking-output-visible');
+            const thinkingGif = seatModifyThinkingOutputDiv.querySelector('.streaming-gif');
+            manageStreamingGif(seatModifyThinkingPre, thinkingGif, 'start');
         }
         sendSeatModificationButton.disabled = true;
 
@@ -1839,7 +1942,15 @@ ${seatMappingInfo}
                                     seatModifyThinkingOutputDiv.classList.remove('thinking-output-visible');
                                 }
                             }
-                            if (outputContent) accumulatedResponse += outputContent; 
+                            if (outputContent) {
+                                if (seatModifyThinkingOutputDiv) {
+                                    const thinkingGif = seatModifyThinkingOutputDiv.querySelector('.streaming-gif');
+                                    manageStreamingGif(null, thinkingGif, 'end');
+                                }
+                                const generatingGif = seatModificationOutput.querySelector('.streaming-gif');
+                                manageStreamingGif(seatModificationOutput, generatingGif, 'start');
+                                accumulatedResponse += outputContent;
+                            }
                         } catch (e) { console.error('解析修改座位SSE数据块时出错:', e, '数据块:', jsonData); }
                     }
                 }
@@ -1921,9 +2032,15 @@ ${seatMappingInfo}
         } finally {
             if (seatModificationLoading) seatModificationLoading.style.display = 'none';
             sendSeatModificationButton.disabled = false;
-            if (seatModifyThinkingOutputDiv && seatModifyThinkingPre && seatModifyThinkingPre.textContent.trim() === '') {
-                seatModifyThinkingOutputDiv.classList.remove('thinking-output-visible');
+            if (seatModifyThinkingOutputDiv) {
+                const thinkingGif = seatModifyThinkingOutputDiv.querySelector('.streaming-gif');
+                manageStreamingGif(null, thinkingGif, 'end');
+                if (seatModifyThinkingPre && seatModifyThinkingPre.textContent.trim() === '') {
+                    seatModifyThinkingOutputDiv.classList.remove('thinking-output-visible');
+                }
             }
+            const generatingGif = seatModificationOutput.querySelector('.streaming-gif');
+            manageStreamingGif(null, generatingGif, 'end');
         }
     });
 }
@@ -2314,6 +2431,8 @@ async function sendAgentMessage() {
     // Ensure the thinking message is visible and scroll to it
     agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
 
+    const agentGif = document.getElementById('agent-streaming-gif');
+    manageStreamingGif(aiMessageContentDiv, agentGif, 'start');
 
     try {
         // 构建请求消息
@@ -2422,6 +2541,8 @@ async function sendAgentMessage() {
         // The outer try was primarily for the initial message creation which is now less prone to fail before fetch.
     } finally { 
         agentSendButton.disabled = false;
+        const agentGif = document.getElementById('agent-streaming-gif');
+        manageStreamingGif(null, agentGif, 'end');
         // If thinking was shown and not replaced by content, ensure it's cleared or finalized.
         // This logic is now handled by replacing thinking content with actual content.
         if(agentChatMessages) agentChatMessages.scrollTop = agentChatMessages.scrollHeight;

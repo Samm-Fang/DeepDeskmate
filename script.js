@@ -2392,6 +2392,128 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // === Agent功能相关代码 - 新增的AI Agent统筹功能 ===
 
+// 新增：Agent AI 的统一系统提示词生成函数
+function getUnifiedAgentSystemPrompt(userRemarks = "") {
+    // --- 系统提示词 (System Prompt) ---
+    // 这部分定义了AI的角色、能力和输出格式，相对固定。
+    const systemPrompt = `
+**您是一个高级座位编排和人员管理 AI 助手。**
+您的目标是根据用户提供的上下文和请求，智能地选择并执行一项操作或者解答用户的问题（一般是关于人员信息整理和座位表编排）。
+
+**您的能力和可用工具：**
+您可以通过生成特定格式的输出来调用以下任一功能。请仔细分析用户意图，选择最合适的一个。
+
+**输出格式 (严格遵循以下其中一种):**
+
+**A. 调整座位布局:**
+   如果您认为需要更改当前的座位布局（例如，座位不足），请使用此格式。
+   <AdjustLayout rows="新行数" cols="新列数" desks_per_group="新同桌数" />
+   - **何时使用:** 仅当布局更改对于完成用户请求是*必需的*或明显有利时。
+   - **注意:** 系统将首先更新布局，然后您需要根据新布局继续处理原始请求。
+
+**B. 更新人员信息:**
+   如果用户的请求是关于添加、删除或修改人员信息，请使用此格式。
+   <SetPersonnelTable>
+   [变更内容]
+   </SetPersonnelTable>
+   - **变更内容格式:**
+     - 新增: \`[新增]| 姓名 | 性别 | 备注 |\`
+     - 修改: \`[修改]| 姓名 | 性别 | 备注 |\`
+     - 删除: \`[删除]姓名\`
+     - 无变化: \`没有变化\`
+
+**C. 生成新的座位安排:**
+   当用户想要一个全新的座位表时（通常是在空表或重置的表上），请使用此格式。
+   <SetSeatTable>
+   [完整的Markdown表格]
+   </SetSeatTable>
+   - **内容:** 表格需包含所有应安排的人员，未使用的座位应标记为 "空座位"。
+   - **未安排人员:** 如果有人因座位不足未被安排，请在 \`</SetSeatTable>\` 标签结束后，另起一行，用此确切格式列出: "未安排人员：[姓名1], [姓名2], ..."
+
+**D. 微调现有的座位安排:**
+   当用户想要对已有的座位表进行局部修改时，请使用此格式。
+   <AdjustSeatTable>
+   [调整指令，每条占一行]
+   </AdjustSeatTable>
+   - **调整指令格式:**
+     - 交换: \`[SWAP] 座位X <-> 座位Y\` (座位占位符请参考上下文中的 \`originalSeatFormat\`)
+     - 移动: \`[MOVE] 人员姓名 TO 座位X\`
+     - 清空: \`[EMPTY] 座位X\`
+     - 填充: \`[FILL] 座位X WITH 人员姓名\`
+   - **无法执行:** 如果指令无法完成，请在标签内用纯文本解释原因。
+
+**E. 纯文本回复:**
+   如果用户的请求不适用于上述任何工具（例如，打招呼、提问、常规对话），或者您需要向用户澄清问题，请直接回复纯文本。
+   此时你的回复无需任何特殊标签，但是你需要避免使用任何上文工具中提到的标签，避免系统误判。
+   - **提示:** 您可以在回复中使用 Markdown 来格式化文本（如列表、粗体）以提高可读性。
+    * 你需要确保回复内容清晰、简洁且友好。你需要尽量避免过于冗长的回答或者长篇大论。
+
+**重要规则:**
+-   在一次回复中，您只能选择上述五种格式中的一种。
+-   请精确使用上下文中提供的人员姓名和座位占位符。
+-   除非格式本身允许，否则不要在标签内外添加任何额外的解释性文字。
+`;
+
+    // --- 上下文提示词 (Context Prompt) ---
+    // 这部分包含所有动态变化的信息，每次调用时都会重新生成。
+    const currentPersonnelTable = personnelDataToMarkdown(personnelData);
+    const currentRows = rowsInput ? parseInt(rowsInput.value) || 0 : 0;
+    const currentCols = colsInput ? parseInt(colsInput.value) || 0 : 0;
+    const currentDesksPerGroup = deskMatesInput ? parseInt(deskMatesInput.value) || 0 : 0;
+
+    let originalSeatFormat = localStorage.getItem('original_seat_format_markdown') || "";
+    if (!originalSeatFormat && currentRows > 0 && currentCols > 0 && currentDesksPerGroup > 0) {
+        originalSeatFormat = generateEmptySeatTableMarkdown(currentRows, currentCols, currentDesksPerGroup);
+    }
+
+    const currentSeatTable = localStorage.getItem('arranged_seat_table_markdown') || originalSeatFormat;
+
+    let seatMappingInfo = "当前没有已编排的座位表，或无法生成映射信息。\n";
+    if (localStorage.getItem('arranged_seat_table_markdown')) {
+        const originalFormatArrayForMapping = markdownTableToArray(originalSeatFormat);
+        const currentSeatTableArrayForMapping = markdownTableToArray(currentSeatTable);
+        if (originalFormatArrayForMapping.length > 0 && currentSeatTableArrayForMapping.length > 0 && originalFormatArrayForMapping.length === currentSeatTableArrayForMapping.length) {
+            seatMappingInfo = "原始座位占位符与当前内容的对应关系 (用于帮助您理解当前占用情况):\n";
+            for (let r = 0; r < originalFormatArrayForMapping.length; r++) {
+                if (r === 0 || originalFormatArrayForMapping[r].some(cell => cell.includes('---'))) continue;
+                for (let c = 0; c < originalFormatArrayForMapping[r].length; c++) {
+                    const originalSeatPlaceholder = (originalFormatArrayForMapping[r][c] || "").trim();
+                    const currentSeatContent = (currentSeatTableArrayForMapping[r] ? (currentSeatTableArrayForMapping[r][c] || '未知') : '未知').trim();
+                    if (originalSeatPlaceholder && !originalSeatPlaceholder.toLowerCase().includes('走廊') && originalSeatPlaceholder !== '') {
+                        seatMappingInfo += `- "${originalSeatPlaceholder}": 当前是 "${currentSeatContent}"\n`;
+                    }
+                }
+            }
+        }
+    }
+    
+    const userDefinedSystemPromptSupplement = agentSystemPromptTextarea ? agentSystemPromptTextarea.value.trim() : "";
+
+    const contextPrompt = `
+**当前的背景信息:**
+-   **当前人员信息表 (\`currentPersonnelTable\`):**
+${currentPersonnelTable || "无人员信息"}
+-   **当前座位布局:**
+    - 行数: ${currentRows}
+    - 列数: ${currentCols}
+    - 每组同桌数: ${currentDesksPerGroup}
+-   **原始座位表格式/结构 (\`originalSeatFormat\`):**
+${originalSeatFormat || "未定义座位格式"}
+-   **当前已安排的座位表 (\`currentSeatTable\`):**
+${currentSeatTable || "无已安排的座位表"}
+-   **座位映射信息 (\`seatMappingInfo\`):**
+${seatMappingInfo}
+-   **用户的备注/指令 (\`remarks\`):**
+${userRemarks}
+${userDefinedSystemPromptSupplement ? `\n- **用户额外系统提示补充:**\n${userDefinedSystemPromptSupplement}` : ""}
+
+请根据以上背景信息和您的能力，处理用户的请求。
+`;
+
+    // 返回一个对象，包含拆分后的两部分
+    return { systemPrompt, contextPrompt };
+}
+
 // Agent对话功能 - 发送消息到AI API
 if (agentSendButton && agentChatInput && agentChatMessages) {
     agentSendButton.addEventListener('click', sendAgentMessage);
@@ -2433,24 +2555,70 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Agent发送消息核心函数
-async function sendAgentMessage() {
-    const userMessage = agentChatInput.value.trim();
-    if (!userMessage) return;
+async function sendAgentMessage(isContinuation = false, continuationParams = {}) {
+    console.log("[Agent] sendAgentMessage called. isContinuation:", isContinuation, "agentChatInput:", agentChatInput); // 新增日志
+    let userMessageContent; 
+    if (isContinuation) {
+        userMessageContent = continuationParams.prompt || "布局已更新，请根据新的布局继续处理之前的请求。";
+        if (continuationParams.displayMessage) { 
+            addAgentMessage('system-notification', continuationParams.displayMessage);
+        }
+    } else {
+        try {
+            if (!agentChatInput) {
+                console.error("[Agent] agentChatInput element is null before accessing .value. Cannot send message.");
+                showInPageNotification("错误：Agent聊天输入框未找到 (检查点1)。", "error");
+                if (typeof agentSendButton !== 'undefined' && agentSendButton) {
+                    agentSendButton.disabled = false;
+                }
+                return;
+            }
+            userMessageContent = agentChatInput.value.trim(); // 尝试访问 .value
+            if (!userMessageContent) {
+                // 如果内容为空，也需要确保按钮状态正确
+                if (typeof agentSendButton !== 'undefined' && agentSendButton) {
+                     agentSendButton.disabled = false; // 如果之前被禁用了
+                }
+                return;
+            }
+            addAgentMessage('user', userMessageContent); 
+            agentChatInput.value = ''; // 清空输入框
+        } catch (e) {
+            console.error("[Agent] Error accessing agentChatInput.value:", e);
+            showInPageNotification(`错误处理用户输入: ${e.message}`, "error");
+            if (typeof agentSendButton !== 'undefined' && agentSendButton) {
+                agentSendButton.disabled = false;
+            }
+            // 将错误信息也显示在聊天界面，以便调试
+            if (typeof addAgentMessage === 'function' && typeof marked === 'function' && agentChatMessages) {
+                 const errorMsgId = `agent-err-${Date.now()}`;
+                 let errorMsgDiv = createAgentMessageElement('assistant', `错误 (输入处理): ${e.message}`, errorMsgId);
+                 errorMsgDiv.classList.add('agent-message-error'); // 添加错误样式类
+                 agentChatMessages.appendChild(errorMsgDiv);
+                 agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
+            }
+            return; // 阻止后续执行
+        }
+    }
 
     // 获取Agent模型配置
     const agentConfig = getModelConfig('agent');
+    console.log("[Agent] Config:", agentConfig); // 日志1
     if (!agentConfig) {
         showInPageNotification('请在侧边栏"使用模型选择"中为"Agent驱动模型"选择一个模型。', 'warning');
+        agentSendButton.disabled = false; // 确保按钮在出错时恢复可用
         return;
     }
 
-    // 添加用户消息到界面
-    addAgentMessage('user', userMessage);
-    agentChatInput.value = '';
     agentSendButton.disabled = true;
 
     // 添加用户消息到对话历史
-    agentConversationHistory.push({ role: 'user', content: userMessage });
+    if (!isContinuation) {
+        agentConversationHistory.push({ role: 'user', content: userMessageContent });
+    } else if (userMessageContent !== (continuationParams.prompt || "布局已更新，请根据新的布局继续处理之前的请求。")) {
+        // This case might be for specific programmatic messages that should also be in history
+        agentConversationHistory.push({ role: 'user', content: userMessageContent });
+    }
 
     const aiMessageId = `agent-msg-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
     let aiMessageDiv = createAgentMessageElement('assistant', 'AI 正在思考中...', aiMessageId);
@@ -2467,17 +2635,24 @@ async function sendAgentMessage() {
 
 
     try {
-        // 构建请求消息
-        const messagesForAPI = [];
-        // 系统提示词 (如果已配置)
-        // if (agentSystemPrompt) { messagesForAPI.push({ role: 'system', content: agentSystemPrompt }); }
-        
-        const recentHistory = agentConversationHistory.slice(-20); // 保留最近20条
-        messagesForAPI.push(...recentHistory);
+        // 获取拆分后的提示词
+        const { systemPrompt, contextPrompt } = getUnifiedAgentSystemPrompt(userMessageContent);
+        console.log("[Agent] System Prompt for API:", systemPrompt);
+        console.log("[Agent] Context Prompt for API:", contextPrompt);
 
-        let accumulatedAiResponse = ""; // 用于存储完整的AI回复以加入历史记录
+        // 构建发送给API的消息体
+        const messagesForAPI = [
+            { role: 'system', content: systemPrompt },
+            // 将上下文作为第一条用户消息发送，用户的实际请求作为第二条
+            { role: 'user', content: contextPrompt },
+            { role: 'user', content: userMessageContent }
+        ];
+        console.log("[Agent] Messages for API:", JSON.stringify(messagesForAPI, null, 2)); // 日志3
+        
+        let accumulatedAiResponse = ""; 
 
         try {
+            console.log(`[Agent] Fetching from: ${agentConfig.baseURL}/v1/chat/completions with model ${agentConfig.modelId}`); // 日志4
             const response = await fetch(`${agentConfig.baseURL}/v1/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -2554,27 +2729,168 @@ async function sendAgentMessage() {
                 if (typeof jsonData !== 'undefined' && jsonData === '[DONE]') break;
             }
             
-            // 流结束后，将完整的AI回复添加到历史记录
+            // --- 开始 Agent 响应解析逻辑 ---
+            let processedByAgentLogic = false;
             if (accumulatedAiResponse) {
-                 agentConversationHistory.push({ role: 'assistant', content: accumulatedAiResponse });
-            } else { // 如果没有内容块，但可能有错误或空回复
-                if (!aiMessageContentDiv.textContent) {
-                     aiMessageContentDiv.textContent = 'AI未返回有效内容。';
-                }
-            }
+                // 1. 检查 <AdjustLayout>
+                const adjustLayoutMatch = accumulatedAiResponse.match(/<AdjustLayout\s+rows="(\d+)"\s+cols="(\d+)"\s+desks_per_group="(\d+)"\s*\/>/i);
+                if (adjustLayoutMatch) {
+                    processedByAgentLogic = true;
+                    const newRows = parseInt(adjustLayoutMatch[1]);
+                    const newCols = parseInt(adjustLayoutMatch[2]);
+                    const newDesksPerGroup = parseInt(adjustLayoutMatch[3]);
 
-        } catch (error) {
-            console.error('Agent API调用错误:', error);
-            if (aiMessageContentDiv) {
-                aiMessageContentDiv.innerHTML = marked.parse(`错误: ${error.message}`);
-            } else {
-                addAgentMessage('assistant', `处理回复时出错: ${error.message}`);
+                    if (rowsInput && colsInput && deskMatesInput) {
+                        rowsInput.value = newRows;
+                        colsInput.value = newCols;
+                        deskMatesInput.value = newDesksPerGroup;
+                        
+                        dynamicGenerateAndPreviewTable(); // 更新UI和localStorage
+                        
+                        const layoutUpdateMessage = `Agent 建议将布局调整为：${newRows}行，${newCols}列，每组${newDesksPerGroup}人。布局已更新。`;
+                        showInPageNotification(layoutUpdateMessage, 'info');
+                        addAgentMessage('system-notification', layoutUpdateMessage); // 在聊天界面也显示
+
+                        // 清理当前AI消息内容，因为它只是布局指令
+                        if (aiMessageContentDiv) {
+                            aiMessageContentDiv.innerHTML = marked.parse(`*Agent请求调整布局: ${newRows}行, ${newCols}列, ${newDesksPerGroup}同桌。正在基于新布局继续...*`);
+                        }
+                        
+                        // 递归调用 sendAgentMessage
+                        // 传递原始的用户请求（可以从history的最后一条用户消息获取，或者让AI基于新上下文自行判断）
+                        const lastUserMessageForContinuation = agentConversationHistory.filter(m => m.role === 'user').pop()?.content || userMessageContent;
+                        sendAgentMessage(true, { 
+                            prompt: `布局已更新为 ${newRows}行, ${newCols}列, ${newDesksPerGroup}同桌。请根据此新布局处理我之前的请求："${lastUserMessageForContinuation}"`,
+                            displayMessage: "Agent 已调整布局，正在基于新布局继续处理您的原始请求..." 
+                        });
+                        // 注意：这里不将 AdjustLayout 的响应加入 history，因为它是中间步骤
+                        // 也不执行后续的标签解析或普通消息处理
+                    } else {
+                        showInPageNotification("错误：无法找到行列同桌数输入框以更新布局。", "error");
+                        if (aiMessageContentDiv) aiMessageContentDiv.innerHTML = marked.parse(accumulatedAiResponse); // 显示原始回复
+                        agentConversationHistory.push({ role: 'assistant', content: accumulatedAiResponse });
+                    }
+                } else {
+                    // 2. 检查 <SetPersonnelTable>
+                    const setPersonnelMatch = accumulatedAiResponse.match(/<SetPersonnelTable>([\s\S]*?)<\/SetPersonnelTable>/i);
+                    if (setPersonnelMatch && setPersonnelMatch[1]) {
+                        processedByAgentLogic = true;
+                        const changesContent = setPersonnelMatch[1].trim();
+                        if (aiMessageContentDiv) aiMessageContentDiv.innerHTML = marked.parse(`Agent 提议更新人员信息:\n\`\`\`\n${changesContent}\n\`\`\``);
+                        
+                        if (changesContent && changesContent.toLowerCase() !== '没有变化') {
+                            updatePersonnelTable(changesContent); // 这个函数会调用 renderPersonnelTable 和保存
+                            showInPageNotification('Agent 已更新人员信息表。', 'success');
+                        } else {
+                            showInPageNotification('Agent 表示人员信息没有变化。', 'info');
+                        }
+                        agentConversationHistory.push({ role: 'assistant', content: accumulatedAiResponse });
+                    } else {
+                        // 3. 检查 <SetSeatTable>
+                        const setSeatTableMatch = accumulatedAiResponse.match(/<SetSeatTable>([\s\S]*?)<\/SetSeatTable>/i);
+                        if (setSeatTableMatch && setSeatTableMatch[1]) {
+                            processedByAgentLogic = true;
+                            let fullTableContent = setSeatTableMatch[1].trim();
+                            let unarrangedPersonnel = "";
+                            
+                            // 检查是否有未安排人员的行 (在标签外部)
+                            const unarrangedMatch = accumulatedAiResponse.match(/<\/SetSeatTable>\s*\n*未安排人员：(.*)/i);
+                            if (unarrangedMatch && unarrangedMatch[1]) {
+                                unarrangedPersonnel = unarrangedMatch[1].trim();
+                            }
+
+                            if (aiMessageContentDiv) {
+                                let displayHtml = `Agent 生成了新的座位表: <br><pre>${fullTableContent.replace(/</g, "<").replace(/>/g, ">")}</pre>`;
+                                if (unarrangedPersonnel) {
+                                    displayHtml += `<br>未安排人员: ${unarrangedPersonnel}`;
+                                }
+                                aiMessageContentDiv.innerHTML = displayHtml; // 使用innerHTML以保留pre格式
+                            }
+
+                            if (tablePreviewDiv) {
+                                tablePreviewDiv.innerHTML = marked.parse(fullTableContent);
+                                localStorage.setItem('arranged_seat_table_markdown', fullTableContent);
+                                applyGenderColoring();
+                                displayOriginalSeatNumbers();
+                                openSeatModificationDialog();
+                                showInPageNotification('Agent 已生成新的座位表。' + (unarrangedPersonnel ? ` 注意：有未安排人员 (${unarrangedPersonnel})` : ''), 'success');
+                            }
+                            agentConversationHistory.push({ role: 'assistant', content: accumulatedAiResponse });
+                        } else {
+                            // 4. 检查 <AdjustSeatTable>
+                            const adjustSeatTableMatch = accumulatedAiResponse.match(/<AdjustSeatTable>([\s\S]*?)<\/AdjustSeatTable>/i);
+                            if (adjustSeatTableMatch && adjustSeatTableMatch[1]) {
+                                processedByAgentLogic = true;
+                                const adjustmentInstructions = adjustSeatTableMatch[1].trim();
+                                if (aiMessageContentDiv) aiMessageContentDiv.innerHTML = marked.parse(`Agent 提议微调座位表:\n\`\`\`\n${adjustmentInstructions}\n\`\`\``);
+
+                                const originalFormat = localStorage.getItem('original_seat_format_markdown') || "";
+                                let currentArrangedTable = localStorage.getItem('arranged_seat_table_markdown');
+                                if (!currentArrangedTable || currentArrangedTable.trim() === "") {
+                                    currentArrangedTable = originalFormat; // 如果没有已编排的，基于空表调整（可能AI会填充）
+                                }
+                                
+                                const { newSeatTableMarkdown, changesSummary } = processSeatChanges(`<seat_changes>${adjustmentInstructions}</seat_changes>`, currentArrangedTable, originalFormat);
+
+                                if (newSeatTableMarkdown) {
+                                    tablePreviewDiv.innerHTML = marked.parse(newSeatTableMarkdown);
+                                    localStorage.setItem('arranged_seat_table_markdown', newSeatTableMarkdown);
+                                    applyGenderColoring();
+                                    displayOriginalSeatNumbers();
+                                    showInPageNotification('Agent 已微调座位表。', 'success');
+                                    if (seatModificationOutput) {
+                                        seatModificationOutput.innerHTML = `<strong>Agent 应用的修改:</strong><br><pre>${changesSummary}</pre>`;
+                                        seatModificationOutput.style.display = 'block';
+                                    }
+                                } else if (changesSummary) {
+                                    showInPageNotification('Agent 的微调指令未能完全应用或包含说明。请查看座位微调区域的详细信息。', changesSummary.toLowerCase().includes('[错误]') || changesSummary.toLowerCase().includes('[警告]') ? 'warning' : 'info');
+                                     if (seatModificationOutput) {
+                                        seatModificationOutput.innerHTML = `<strong>Agent 指令处理结果:</strong><br><pre>${changesSummary}</pre>`;
+                                        seatModificationOutput.style.display = 'block';
+                                    }
+                                } else {
+                                    showInPageNotification('Agent 的微调指令未产生变化或无法解析。', 'warning');
+                                }
+                                agentConversationHistory.push({ role: 'assistant', content: accumulatedAiResponse });
+                            }
+                        }
+                    }
+                }
+            } // end of if (accumulatedAiResponse)
+
+            // 如果没有被任何工具标签处理，则将整个回复视为纯文本/Markdown
+            if (!processedByAgentLogic && accumulatedAiResponse) {
+                // 最终的UI更新已在流式处理中完成
+                // 将最终的、完整的AI回复存入历史记录
+                agentConversationHistory.push({ role: 'assistant', content: accumulatedAiResponse });
+            } else if (!accumulatedAiResponse && !processedByAgentLogic) { // 处理AI没有返回任何内容的情况
+                if (aiMessageContentDiv && !aiMessageContentDiv.innerHTML.trim()) {
+                    aiMessageContentDiv.innerHTML = marked.parse('*AI 未返回任何内容。*');
+                }
+                // 可以在历史记录中添加一个标记，以便调试
+                agentConversationHistory.push({ role: 'assistant', content: '<!-- AI_EMPTY_RESPONSE -->' });
             }
-            showInPageNotification(`Agent调用失败: ${error.message}`, 'error');
+            // --- 结束 Agent 响应解析逻辑 ---
+
+        } catch (error) { // 内部 catch
+            console.error('[Agent] Inner API/Streaming Error:', error); // 日志5
+            if (aiMessageContentDiv) {
+                aiMessageContentDiv.innerHTML = marked.parse(`错误 (内部): ${error.message}`);
+            } else {
+                addAgentMessage('assistant', `处理回复时出错 (内部): ${error.message}`);
+            }
+            showInPageNotification(`Agent调用失败 (内部): ${error.message}`, 'error');
         } 
-        // No separate outer catch needed if all primary operations are within the inner try-catch
-        // The outer try was primarily for the initial message creation which is now less prone to fail before fetch.
+    } catch (error) { // 外部 catch
+        console.error('[Agent] Outer sendAgentMessage Error:', error); // 日志6
+        if (aiMessageContentDiv) { // 确保即使在外部捕获错误时也尝试更新UI
+            aiMessageContentDiv.innerHTML = marked.parse(`错误 (外部): ${error.message}`);
+        } else {
+            addAgentMessage('assistant', `Agent消息发送失败 (外部): ${error.message}`);
+        }
+        showInPageNotification(`Agent消息发送失败 (外部): ${error.message}`, 'error');
     } finally { 
+        console.log("[Agent] Finally block reached."); // 日志7
         agentSendButton.disabled = false;
         const agentGif = document.getElementById('agent-streaming-gif');
         manageStreamingGif(null, agentGif, 'end');
@@ -2589,9 +2905,21 @@ async function sendAgentMessage() {
 function createAgentMessageElement(role, content, id) {
     const messageDiv = document.createElement('div');
     if (id) messageDiv.id = id;
-    messageDiv.className = `agent-message ${role === 'user' ? 'user-message' : 'agent-message-assistant'}`;
+
+    let roleLabel = 'Agent'; // Default
+    let specificClass = 'agent-message-assistant';
+
+    if (role === 'user') {
+        roleLabel = '用户';
+        specificClass = 'user-message';
+    } else if (role === 'system-notification') {
+        roleLabel = '系统通知';
+        specificClass = 'system-notification-message'; // New class for styling
+    }
+    // 'assistant' role will use the default roleLabel 'Agent' and specificClass 'agent-message-assistant'
+
+    messageDiv.className = `agent-message ${specificClass}`;
     
-    const roleLabel = role === 'user' ? '用户' : 'Agent';
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     const headerDiv = document.createElement('div');
@@ -2600,9 +2928,12 @@ function createAgentMessageElement(role, content, id) {
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'agent-message-content';
-    // If content is "AI 正在思考中..." or similar, don't parse as markdown yet.
-    // Markdown parsing will happen when actual AI response content is streamed.
-    if (content.includes('AI 正在思考中...') || (content.startsWith('<strong>AI 思考过程:</strong>'))) {
+    
+    if (role === 'system-notification') {
+        // For system notifications, we might want to display content as plain text or simple HTML, not full Markdown.
+        // Let's assume content is pre-formatted or simple text.
+        contentDiv.innerHTML = content; // Or escape HTML if content is purely text: contentDiv.textContent = content;
+    } else if (content.includes('AI 正在思考中...') || (content.startsWith('<strong>AI 思考过程:</strong>'))) {
         contentDiv.innerHTML = content; // Allow initial HTML for thinking message
     } else {
         contentDiv.innerHTML = marked.parse(content); // Parse other content as Markdown

@@ -9,15 +9,9 @@ function updateGifPosition(contentElement, gifElement) {
     // Find the cursor span which is appended at the end of the stream
     const cursor = contentElement.querySelector('.streaming-cursor');
     if (cursor) {
-        const containerRect = contentElement.getBoundingClientRect();
-        const cursorRect = cursor.getBoundingClientRect();
-
-        // Calculate position relative to the container, including scroll offsets
-        let left = cursorRect.left - containerRect.left + contentElement.scrollLeft;
-        let top = cursorRect.top - containerRect.top + contentElement.scrollTop;
-
-        gifElement.style.left = `${left}px`;
-        gifElement.style.top = `${top}px`;
+        // Position the GIF at the cursor's offset position relative to its container
+        gifElement.style.left = `${cursor.offsetLeft}px`;
+        gifElement.style.top = `${cursor.offsetTop}px`;
     }
 }
 
@@ -880,7 +874,8 @@ ${personnelDataToMarkdown(personnelData)}
                             } else {
                                 changesBlockStreamContent += outputContent;
                                 // Display raw stream within <changes>
-                                markdownOutputDiv.innerHTML = textBeforeChanges + "<changes>" + changesBlockStreamContent.split('</changes>')[0] + '<span class="streaming-cursor"></span>';
+                                let currentHtml = textBeforeChanges + "<changes>" + changesBlockStreamContent.split('</changes>')[0];
+                                markdownOutputDiv.innerHTML = currentHtml + '<span class="streaming-cursor"></span>';
                                 
                                 // Process complete lines for real-time table update
                                 let currentProcessingContent = unprocessedLinePart + changesBlockStreamContent;
@@ -911,7 +906,14 @@ ${personnelDataToMarkdown(personnelData)}
                         }
 
                         if (reasoningContent && personnelThinkingOutputDiv && personnelThinkingPre) {
-                            personnelThinkingPre.textContent += reasoningContent;
+                            // DOM manipulation for PRE tags
+                            const cursor = personnelThinkingPre.querySelector('.streaming-cursor');
+                            if(cursor) cursor.remove();
+                            personnelThinkingPre.appendChild(document.createTextNode(reasoningContent));
+                            const newCursor = document.createElement('span');
+                            newCursor.className = 'streaming-cursor';
+                            personnelThinkingPre.appendChild(newCursor);
+
                             if (personnelThinkingPre.textContent.trim() !== '') {
                                 personnelThinkingOutputDiv.classList.add('thinking-output-visible');
                             } else {
@@ -1467,10 +1469,17 @@ ${seatTableFormatToUse}
                         const outputContent = delta?.content;
                         
                         if (reasoningContent && aiThinkingOutputDiv && aiThinkingPre) {
-                            thinkingContent += reasoningContent;
-                            aiThinkingPre.textContent = thinkingContent;
+                            thinkingContent += reasoningContent; // Keep accumulating for history
+                            // DOM manipulation for PRE tags
+                            const cursor = aiThinkingPre.querySelector('.streaming-cursor');
+                            if(cursor) cursor.remove();
+                            aiThinkingPre.appendChild(document.createTextNode(reasoningContent));
+                            const newCursor = document.createElement('span');
+                            newCursor.className = 'streaming-cursor';
+                            aiThinkingPre.appendChild(newCursor);
+                            
                             aiThinkingPre.scrollTop = aiThinkingPre.scrollHeight;
-                            if (thinkingContent.trim() !== '') {
+                            if (aiThinkingPre.textContent.trim() !== '') {
                                 aiThinkingOutputDiv.classList.add('thinking-output-visible');
                             } else {
                                 aiThinkingOutputDiv.classList.remove('thinking-output-visible');
@@ -1498,7 +1507,8 @@ ${seatTableFormatToUse}
                                 currentTableSegment = endIndex === -1 ? accumulatedContent.substring(startIndex) : accumulatedContent.substring(startIndex, endIndex);
                                 
                                 if (currentTableSegment.trim() && currentTableSegment.includes("|")) {
-                                    tablePreviewDiv.innerHTML = marked.parse(currentTableSegment) + '<span class="streaming-cursor"></span>';
+                                    let currentHtml = marked.parse(currentTableSegment);
+                                    tablePreviewDiv.innerHTML = currentHtml + '<span class="streaming-cursor"></span>';
                                     applyGenderColoring(); 
                                     displayOriginalSeatNumbers(); 
                                 }
@@ -1929,9 +1939,16 @@ ${seatMappingInfo}
                             const outputContent = delta?.content;
 
                             if (reasoningContent && seatModifyThinkingOutputDiv && seatModifyThinkingPre) {
-                                thinkingPart += reasoningContent;
-                                seatModifyThinkingPre.textContent = thinkingPart;
-                                if (thinkingPart.trim() !== '') {
+                                thinkingPart += reasoningContent; // Keep accumulating for history
+                                // DOM manipulation for PRE tags
+                                const cursor = seatModifyThinkingPre.querySelector('.streaming-cursor');
+                                if(cursor) cursor.remove();
+                                seatModifyThinkingPre.appendChild(document.createTextNode(reasoningContent));
+                                const newCursor = document.createElement('span');
+                                newCursor.className = 'streaming-cursor';
+                                seatModifyThinkingPre.appendChild(newCursor);
+
+                                if (seatModifyThinkingPre.textContent.trim() !== '') {
                                     seatModifyThinkingOutputDiv.classList.add('thinking-output-visible');
                                 } else {
                                     seatModifyThinkingOutputDiv.classList.remove('thinking-output-visible');
@@ -1948,7 +1965,7 @@ ${seatMappingInfo}
                                     manageStreamingGif(seatModificationOutput, generatingGif, 'start');
                                 }
                                 accumulatedResponse += outputContent;
-                                seatModificationOutput.innerHTML = accumulatedResponse + '<span class="streaming-cursor"></span>';
+                                seatModificationOutput.innerHTML = accumulatedResponse.replace(/\n/g, '<br>') + '<span class="streaming-cursor"></span>';
                             }
                         } catch (e) { console.error('解析修改座位SSE数据块时出错:', e, '数据块:', jsonData); }
                     }
@@ -2507,7 +2524,8 @@ async function sendAgentMessage() {
                                     accumulatedAiResponse = ''; // Reset accumulated response
                                 }
                                 accumulatedAiResponse += contentChunk;
-                                aiMessageContentDiv.innerHTML = marked.parse(accumulatedAiResponse) + '<span class="streaming-cursor"></span>'; // Render Markdown
+                                let currentHtml = marked.parse(accumulatedAiResponse);
+                                aiMessageContentDiv.innerHTML = currentHtml + '<span class="streaming-cursor"></span>'; // Render Markdown
                                 agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
                             }
                         } catch (e) {

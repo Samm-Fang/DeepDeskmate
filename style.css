@@ -1623,3 +1623,10 @@ button.danger-button:hover { background-color: #c0392b; }
     display: inline-block;
     opacity: 1;
 }
+
+.streaming-cursor {
+    display: inline; /* Use inline to follow text flow naturally */
+    width: 0;
+    height: 0;
+    /* No visible properties needed, it's just a marker */
+}

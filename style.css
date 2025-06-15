@@ -1636,3 +1636,23 @@ button.danger-button:hover { background-color: #c0392b; }
     height: 0;
     /* No visible properties needed, it's just a marker */
 }
+
+.agent-message.system-notification-message {
+    background-color: #f0f0f0; /* 浅灰色背景 */
+    border: 1px solid #cccccc;
+    color: #333333; /* 深灰色文字 */
+    align-self: center; /* 系统消息居中对齐 */
+    max-width: 90%; /* 可以比用户/Agent消息更宽 */
+    margin-top: 8px;
+    margin-bottom: 8px;
+    border-left: 4px solid #777777; /* 中性强调色 */
+}
+
+.agent-message.system-notification-message .agent-message-header strong {
+    color: #555555; /* 系统通知标签颜色稍深 */
+}
+
+.agent-message.system-notification-message .agent-message-content {
+    font-style: italic; /* 系统通知内容使用斜体 */
+    color: #444444;
+}

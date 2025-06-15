@@ -157,3 +157,9 @@ Agent 根据您的需求，主要会调用以下几种内部工具：
 
 您可以在以下网站试用DeepDeskmate的在线版本：  
 [https://deepdesk.sammfang.top](https://deepdesk.sammfang.top)
+
+---
+感谢您能读到这里，祝您使用愉快！欢迎您进行二次开发和修改。
+<p align="center">
+  <img src="images/logo-text.png" alt="DeepDeskmate Logo" width="900"/>
+</p>

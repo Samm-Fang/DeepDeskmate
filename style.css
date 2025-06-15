@@ -740,6 +740,11 @@ button:disabled {
 .seat-mod-message { color: #5f626b; font-style: italic; } 
 
 
+.model-trigger:hover,
+.custom-select-trigger:hover {
+ background-color: #b3d9ff;
+}
+
 /* Footer */
 #footer {
     text-align: center;

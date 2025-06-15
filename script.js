@@ -2410,6 +2410,7 @@ function getUnifiedAgentSystemPrompt(userRemarks = "") {
    <AdjustLayout rows="新行数" cols="新列数" desks_per_group="新同桌数" />
    - **何时使用:** 仅当布局更改对于完成用户请求是*必需的*或明显有利时。
    - **注意:** 系统将首先更新布局，然后您需要根据新布局继续处理原始请求。
+   - 在调整布局后，你会收到一份由系统发送给你的新的座位表格式，然后您可以处理其他操作。
 
 **B. 更新人员信息:**
    如果用户的请求是关于添加、删除或修改人员信息，请使用此格式。
@@ -2560,7 +2561,7 @@ async function sendAgentMessage(isContinuation = false, continuationParams = {})
     console.log("[Agent] sendAgentMessage called. isContinuation:", isContinuation, "agentChatInput:", agentChatInput); // 新增日志
     let userMessageContent; 
     if (isContinuation) {
-        userMessageContent = continuationParams.prompt || "布局已更新，请根据新的布局继续处理之前的请求。";
+        userMessageContent = continuationParams.prompt || "布局已更新，你可以检查新的布局，然后根据新的布局继续处理之前用户的需求，或者处理下一步操作。";
         if (continuationParams.displayMessage) { 
             addAgentMessage('system-notification', continuationParams.displayMessage);
         }
@@ -2616,10 +2617,10 @@ async function sendAgentMessage(isContinuation = false, continuationParams = {})
     // 添加用户消息到对话历史
     if (!isContinuation) {
         agentConversationHistory.push({ role: 'user', content: userMessageContent });
-    } else if (userMessageContent !== (continuationParams.prompt || "布局已更新，请根据新的布局继续处理之前的请求。")) {
-        // This case might be for specific programmatic messages that should also be in history
-        agentConversationHistory.push({ role: 'user', content: userMessageContent });
     }
+    // 对于延续性的调用，其提示语是系统生成的，不应作为用户消息添加到历史记录中。
+    // 因此，移除了原有的 else if 分支。
+
 
     const aiMessageId = `agent-msg-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
     let aiMessageDiv = createAgentMessageElement('assistant', 'AI 正在思考中...', aiMessageId);
@@ -2731,13 +2732,11 @@ async function sendAgentMessage(isContinuation = false, continuationParams = {})
             }
             
             // --- 开始 Agent 响应解析逻辑 ---
-            const responseForHistory = accumulatedAiResponse; // 为历史记录保留原始响应
-            let isContinuationNeeded = false;
+            const responseForHistory = accumulatedAiResponse; 
 
             // 1. 检查 <AdjustLayout> - 这是排他性的，并会触发重新提示
             const adjustLayoutMatch = accumulatedAiResponse.match(/<AdjustLayout\s+rows="(\d+)"\s+cols="(\d+)"\s+desks_per_group="(\d+)"\s*\/>/i);
             if (adjustLayoutMatch) {
-                isContinuationNeeded = true;
                 const newRows = parseInt(adjustLayoutMatch[1]);
                 const newCols = parseInt(adjustLayoutMatch[2]);
                 const newDesksPerGroup = parseInt(adjustLayoutMatch[3]);
@@ -2758,10 +2757,16 @@ async function sendAgentMessage(isContinuation = false, continuationParams = {})
                     }
                     
                     const lastUserMessageForContinuation = agentConversationHistory.filter(m => m.role === 'user').pop()?.content || userMessageContent;
+                    
+                    // **核心修复**：确保只有在布局调整后才发起延续性调用
+                    // 并且在 finally 块中不再处理此响应，因为我们将发起新调用
+                    agentSendButton.disabled = false; // Re-enable button before recursive call
+                    manageStreamingGif(null, agentGif, 'end'); // End current gif before new call
                     sendAgentMessage(true, { 
                         prompt: `布局已更新为 ${newRows}行, ${newCols}列, ${newDesksPerGroup}同桌。请根据此新布局处理我之前的请求："${lastUserMessageForContinuation}"`,
                         displayMessage: "Agent 已调整布局，正在基于新布局继续处理您的原始请求..." 
                     });
+                    return; // **核心修复**：立即退出，防止后续代码执行
                 } else {
                     showInPageNotification("错误：无法找到行列同桌数输入框以更新布局。", "error");
                     if (aiMessageContentDiv) aiMessageContentDiv.innerHTML = marked.parse(accumulatedAiResponse);
@@ -2871,6 +2876,7 @@ async function sendAgentMessage(isContinuation = false, continuationParams = {})
                 }
             }
             // --- 结束 Agent 响应解析逻辑 ---
+
 
         } catch (error) { // 内部 catch
             console.error('[Agent] Inner API/Streaming Error:', error); // 日志5

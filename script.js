@@ -119,6 +119,18 @@ const rowsInput = document.getElementById('rows');
 const colsInput = document.getElementById('cols');
 const deskMatesInput = document.getElementById('desk-mates');
 const tablePreviewDiv = document.getElementById('table-preview');
+const tableOutputDiv = document.getElementById('table-output');
+
+// --- 新增：座位表模式切换 ---
+const modeClassroomButton = document.getElementById('mode-classroom');
+const modeCustomButton = document.getElementById('mode-custom');
+const classroomControls = document.getElementById('classroom-controls');
+const customControls = document.getElementById('custom-controls');
+const customRowsInput = document.getElementById('custom-rows');
+const customColsInput = document.getElementById('custom-cols');
+
+let currentSeatMode = 'classroom'; // 'classroom' or 'custom'
+let customLayoutData = []; // 二维数组，用于存储自定义布局
 // const generateTableButton = document.getElementById('generate-table'); // 按钮已被移除或功能合并
 
 // Sidebar elements
@@ -188,6 +200,7 @@ const copyArrangedTableButton = document.getElementById('copy-arranged-table');
 const copyPersonnelInfoButton = document.getElementById('copy-personnel-info');
 const importSeatTableMarkdownTextarea = document.getElementById('import-seat-table-markdown');
 const importSeatTableButton = document.getElementById('import-seat-table-button');
+const clearSeatTableButton = document.getElementById('clear-seat-table');
 
 // Seat Modification UI Elements
 const seatModificationSection = document.getElementById('seat-modification-section');
@@ -1235,25 +1248,27 @@ function dynamicGenerateAndPreviewTable() {
     const cols = parseInt(colsInput.value);
     const deskMates = parseInt(deskMatesInput.value);
 
+    if (!tableOutputDiv) return; // 安全检查
+
     if (rows < 1 || cols < 1 || deskMates < 1) {
-        tablePreviewDiv.innerHTML = '<p style="color: #aaa;">请输入有效的行数、列数和同桌数。</p>';
+        tableOutputDiv.innerHTML = '<p style="color: #aaa;">请输入有效的行数、列数和同桌数。</p>';
         closeSeatModificationDialog(); // 确保在无效输入时也隐藏
         return;
     }
     if (deskMates > cols) {
-        tablePreviewDiv.innerHTML = '<p style="color: red;">同桌数不能大于列数。</p>';
+        tableOutputDiv.innerHTML = '<p style="color: red;">同桌数不能大于列数。</p>';
         closeSeatModificationDialog(); // 确保在无效输入时也隐藏
         return;
     }
 
     const markdownTable = generateEmptySeatTableMarkdown(rows, cols, deskMates);
     if (!markdownTable) {
-        tablePreviewDiv.innerHTML = '<p style="color: red;">无法生成座位表预览。</p>';
+        tableOutputDiv.innerHTML = '<p style="color: red;">无法生成座位表预览。</p>';
         closeSeatModificationDialog();
         return;
     }
 
-    tablePreviewDiv.innerHTML = marked.parse(markdownTable);
+    tableOutputDiv.innerHTML = marked.parse(markdownTable);
     localStorage.setItem('seat_table_markdown', markdownTable); 
     localStorage.setItem('original_seat_format_markdown', markdownTable); 
     localStorage.removeItem('arranged_seat_table_markdown'); 
@@ -1264,7 +1279,250 @@ function dynamicGenerateAndPreviewTable() {
         seatModificationOutput.innerHTML = '';
         seatModificationOutput.style.display = 'none';
     }
-    seatModificationConversationHistory = []; 
+    seatModificationConversationHistory = [];
+}
+// --- 新增：自定义座位模式相关函数 ---
+
+/**
+ * 根据自定义的行数和列数，渲染一个可交互的表格编辑器
+ */
+function renderCustomTableEditor() {
+    const rows = parseInt(customRowsInput.value);
+    const cols = parseInt(customColsInput.value);
+
+    if (isNaN(rows) || isNaN(cols) || rows < 1 || cols < 1) {
+        tableOutputDiv.innerHTML = '<p style="color: #aaa;">请输入有效的表格行数和列数。</p>';
+        return;
+    }
+
+    // 初始化或调整自定义布局数据
+    // 如果行数或列数变化，需要重新生成 customLayoutData
+    if (customLayoutData.length !== rows || (customLayoutData[0] && customLayoutData[0].length !== cols)) {
+        customLayoutData = Array.from({ length: rows }, () =>
+            Array.from({ length: cols }, () => ({ type: 'empty', content: null, seat_id: null }))
+        );
+    }
+    
+    let tableHtml = '<table id="custom-seat-table" class="custom-seat-table">';
+    for (let i = 0; i < rows; i++) {
+        tableHtml += '<tr>';
+        for (let j = 0; j < cols; j++) {
+            const cellData = customLayoutData[i][j];
+            let cellContent = '';
+            let cellClass = 'empty-cell';
+            if (cellData.type === 'seat') {
+                cellClass = 'seat-cell';
+                if (cellData.content) { // 如果有编排内容（人名）
+                    cellContent = `<span class="seat-id">${cellData.seat_id}</span><span class="seat-name">${cellData.content}</span>`;
+                } else { // 如果只是空座位
+                    cellContent = `座位${cellData.seat_id || ''}`;
+                }
+            } else if (cellData.type === 'remark') {
+                cellClass = 'remark-cell';
+                cellContent = cellData.content;
+            }
+            tableHtml += `<td class="custom-cell ${cellClass}" data-row="${i}" data-col="${j}">${cellContent}</td>`;
+        }
+        tableHtml += '</tr>';
+    }
+    tableHtml += '</table>';
+
+    tableOutputDiv.innerHTML = tableHtml;
+    updateSeatIds(); // 确保在渲染后更新座位号
+    // localStorage.setItem('arranged_seat_table_markdown', ''); // 不在此处清空，仅在清空按钮处清空
+    closeSeatModificationDialog();
+}
+
+/**
+ * 更新所有座位的 seat_id
+ */
+function updateSeatIds() {
+    let seatCounter = 1;
+    for (let i = 0; i < customLayoutData.length; i++) {
+        for (let j = 0; j < customLayoutData[i].length; j++) {
+            const cellData = customLayoutData[i][j];
+            if (cellData.type === 'seat') {
+                cellData.seat_id = seatCounter++;
+                const cellElement = document.querySelector(`.custom-cell[data-row="${i}"][data-col="${j}"] .seat-id`);
+                if (cellElement) {
+                    cellElement.textContent = cellData.seat_id;
+                }
+            } else {
+                cellData.seat_id = null;
+            }
+        }
+    }
+}
+
+/**
+ * 将Markdown表格解析为 customLayoutData 格式
+ * @param {string} markdown - Markdown表格字符串
+ * @returns {Array} - customLayoutData 格式的二维数组
+ */
+function markdownToCustomLayoutData(markdown) {
+    const lines = markdown.trim().split('\n').slice(2); // 跳过表头和分隔线
+    return lines.map(line => {
+        const cells = line.split('|').slice(1, -1).map(cell => cell.trim());
+        return cells.map(cellContent => {
+            if (cellContent.startsWith('座位')) {
+                const seatIdMatch = cellContent.match(/座位(\d+)/);
+                return { type: 'seat', content: null, seat_id: seatIdMatch ? parseInt(seatIdMatch[1]) : null };
+            } else if (cellContent.trim() === '') {
+                return { type: 'empty', content: null, seat_id: null };
+            } else {
+                return { type: 'remark', content: cellContent, seat_id: null };
+            }
+        });
+    });
+}
+
+/**
+ * 将AI编排好的结果渲染到自定义表格上
+ * @param {string} arrangedMarkdown - AI返回的编排好的Markdown表格
+ */
+function renderArrangedCustomTable(arrangedMarkdown) {
+    const arrangedArray = markdownTableToArray(arrangedMarkdown).slice(2); // 跳过表头和分隔线
+
+    if (arrangedArray.length !== customLayoutData.length || (arrangedArray[0] && arrangedArray[0].length !== customLayoutData[0].length)) {
+        console.error("AI返回的表格维度与自定义布局不匹配。");
+        tablePreviewDiv.innerHTML = `<p style="color: red;">AI返回的表格维度与当前布局不匹配，无法渲染。</p>`;
+        return;
+    }
+
+    // 创建一个从 seat_id 到人名的映射
+    const seatIdToNameMap = new Map();
+    arrangedArray.forEach((row, r) => {
+        row.forEach((cellContent, c) => {
+            const originalCellData = customLayoutData[r][c];
+            if (originalCellData && originalCellData.type === 'seat') {
+                // AI返回的表格里，座位会被人名或“空座位”替代
+                if (cellContent.trim() !== '空座位' && cellContent.trim() !== '') {
+                    seatIdToNameMap.set(originalCellData.seat_id, cellContent.trim());
+                }
+            }
+        });
+    });
+
+    // 更新 customLayoutData 中的 content
+    for (let i = 0; i < customLayoutData.length; i++) {
+        for (let j = 0; j < customLayoutData[i].length; j++) {
+            const cellData = customLayoutData[i][j];
+            if (cellData.type === 'seat') {
+                cellData.content = seatIdToNameMap.get(cellData.seat_id) || null;
+            }
+        }
+    }
+    
+    // 重新渲染整个编辑器以显示姓名
+    renderCustomTableEditor();
+    // 渲染后，找到对应的座位单元格并填入名字
+    for (let i = 0; i < customLayoutData.length; i++) {
+        for (let j = 0; j < customLayoutData[i].length; j++) {
+            const cellData = customLayoutData[i][j];
+            if (cellData.type === 'seat' && cellData.content) {
+                const cellElement = document.querySelector(`.custom-cell[data-row="${i}"][data-col="${j}"]`);
+                if (cellElement) {
+                    cellElement.innerHTML = `<span class="seat-id">${cellData.seat_id}</span><span class="seat-name">${cellData.content}</span>`;
+                }
+            }
+        }
+    }
+    applyGenderColoring(); // 应用性别着色
+}
+
+/**
+ * 将Markdown表格解析为 customLayoutData 格式
+ * @param {string} markdown - Markdown表格字符串
+ * @returns {Array} - customLayoutData 格式的二维数组
+ */
+function markdownToCustomLayoutData(markdown) {
+    const lines = markdown.trim().split('\n').slice(2); // 跳过表头和分隔线
+    return lines.map(line => {
+        const cells = line.split('|').slice(1, -1).map(cell => cell.trim());
+        return cells.map(cellContent => {
+            if (cellContent.startsWith('座位')) {
+                const seatIdMatch = cellContent.match(/座位(\d+)/);
+                return { type: 'seat', content: null, seat_id: seatIdMatch ? parseInt(seatIdMatch[1]) : null };
+            } else if (cellContent.trim() === '') {
+                return { type: 'empty', content: null, seat_id: null };
+            } else {
+                return { type: 'remark', content: cellContent, seat_id: null };
+            }
+        });
+    });
+}
+
+/**
+ * 将AI编排好的结果渲染到自定义表格上
+ * @param {string} arrangedMarkdown - AI返回的编排好的Markdown表格
+ */
+function renderArrangedCustomTable(arrangedMarkdown) {
+    const arrangedArray = markdownTableToArray(arrangedMarkdown).slice(2); // 跳过表头和分隔线
+
+    if (arrangedArray.length !== customLayoutData.length || (arrangedArray[0] && arrangedArray[0].length !== customLayoutData[0].length)) {
+        console.error("AI返回的表格维度与自定义布局不匹配。");
+        tablePreviewDiv.innerHTML = `<p style="color: red;">AI返回的表格维度与当前布局不匹配，无法渲染。</p>`;
+        return;
+    }
+
+    // 创建一个从 seat_id 到人名的映射
+    const seatIdToNameMap = new Map();
+    arrangedArray.forEach((row, r) => {
+        row.forEach((cellContent, c) => {
+            const originalCellData = customLayoutData[r][c];
+            if (originalCellData && originalCellData.type === 'seat') {
+                // AI返回的表格里，座位会被人名或“空座位”替代
+                if (cellContent.trim() !== '空座位' && cellContent.trim() !== '') {
+                    seatIdToNameMap.set(originalCellData.seat_id, cellContent.trim());
+                }
+            }
+        });
+    });
+
+    // 更新 customLayoutData 中的 content
+    for (let i = 0; i < customLayoutData.length; i++) {
+        for (let j = 0; j < customLayoutData[i].length; j++) {
+            const cellData = customLayoutData[i][j];
+            if (cellData.type === 'seat') {
+                cellData.content = seatIdToNameMap.get(cellData.seat_id) || null;
+            }
+        }
+    }
+    
+    // 重新渲染整个编辑器以显示姓名
+    renderCustomTableEditor();
+    // 渲染后，找到对应的座位单元格并填入名字
+    for (let i = 0; i < customLayoutData.length; i++) {
+        for (let j = 0; j < customLayoutData[i].length; j++) {
+            const cellData = customLayoutData[i][j];
+            if (cellData.type === 'seat' && cellData.content) {
+                const cellElement = document.querySelector(`.custom-cell[data-row="${i}"][data-col="${j}"]`);
+                if (cellElement) {
+                    cellElement.innerHTML = `<span class="seat-id">${cellData.seat_id}</span><span class="seat-name">${cellData.content}</span>`;
+                }
+            }
+        }
+    }
+    applyGenderColoring(); // 应用性别着色
+}
+
+// --- 模式切换逻辑 ---
+function switchSeatMode(mode) {
+    if (mode === 'classroom') {
+        currentSeatMode = 'classroom';
+        modeClassroomButton.classList.add('active');
+        modeCustomButton.classList.remove('active');
+        classroomControls.style.display = 'block';
+        customControls.style.display = 'none';
+        dynamicGenerateAndPreviewTable(); // 渲染教室模式的预览
+    } else if (mode === 'custom') {
+        currentSeatMode = 'custom';
+        modeCustomButton.classList.add('active');
+        modeClassroomButton.classList.remove('active');
+        customControls.style.display = 'block';
+        classroomControls.style.display = 'none';
+        renderCustomTableEditor(); // 渲染自定义模式的编辑器
+    }
 }
 
 // 为行数、列数、同桌数输入框添加事件监听器
@@ -1272,10 +1530,136 @@ rowsInput.addEventListener('input', dynamicGenerateAndPreviewTable);
 colsInput.addEventListener('input', dynamicGenerateAndPreviewTable);
 deskMatesInput.addEventListener('input', dynamicGenerateAndPreviewTable);
 
+// --- 新增：自定义座位输入和模式切换的事件监听 ---
+if (modeClassroomButton) {
+    modeClassroomButton.addEventListener('click', () => switchSeatMode('classroom'));
+}
+if (modeCustomButton) {
+    modeCustomButton.addEventListener('click', () => switchSeatMode('custom'));
+}
+if (customRowsInput) {
+    customRowsInput.addEventListener('input', renderCustomTableEditor);
+}
+if (customColsInput) {
+    customColsInput.addEventListener('input', renderCustomTableEditor);
+}
+
+// --- 新增：自定义表格交互事件监听 ---
+tablePreviewDiv.addEventListener('click', (event) => {
+    if (currentSeatMode !== 'custom') return;
+    const cell = event.target.closest('.custom-cell');
+    if (!cell) return;
+
+    const row = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
+
+    const cellData = customLayoutData[row][col];
+    if (cellData.type === 'empty') {
+        cellData.type = 'seat';
+    }
+    // 如果已经是座位，再次点击不执行任何操作，以防误触
+    
+    renderCustomTableEditor(); // 重新渲染以更新UI和座位号
+});
+
+tablePreviewDiv.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    if (currentSeatMode !== 'custom') return;
+    const cell = event.target.closest('.custom-cell');
+    if (!cell) return;
+
+    const row = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
+
+    showCustomContextMenu(event.clientX, event.clientY, row, col);
+});
+
+/**
+ * 显示自定义的上下文菜单
+ * @param {number} x - 鼠标X坐标
+ * @param {number} y - 鼠标Y坐标
+ * @param {number} row - 单元格行号
+ * @param {number} col - 单元格列号
+ */
+function showCustomContextMenu(x, y, row, col) {
+    // 移除已存在的菜单
+    const existingMenu = document.getElementById('custom-seat-context-menu');
+    if (existingMenu) existingMenu.remove();
+
+    const cellData = customLayoutData[row][col];
+    
+    const menu = document.createElement('div');
+    menu.id = 'custom-seat-context-menu';
+    menu.style.top = `${y}px`;
+    menu.style.left = `${x}px`;
+
+    let menuItems = '';
+
+    if (cellData.type === 'seat') {
+        menuItems += `<div class="context-menu-item" data-action="delete-seat">删除座位</div>`;
+    }
+    
+    menuItems += `<div class="context-menu-item" data-action="edit-remark">添加/编辑备注</div>`;
+    
+    if (cellData.type === 'remark') {
+        menuItems += `<div class="context-menu-item" data-action="clear-cell">清空单元格</div>`;
+    }
+
+
+    menu.innerHTML = menuItems;
+    document.body.appendChild(menu);
+
+    menu.addEventListener('click', (event) => {
+        const action = event.target.dataset.action;
+        if (action === 'delete-seat') {
+            customLayoutData[row][col] = { type: 'empty', content: null, seat_id: null };
+            renderCustomTableEditor();
+        } else if (action === 'edit-remark') {
+            const cellElement = document.querySelector(`.custom-cell[data-row="${row}"][data-col="${col}"]`);
+            if (cellElement) {
+                cellElement.innerHTML = `<input type="text" class="remark-input" value="${cellData.content || ''}" />`;
+                const input = cellElement.querySelector('input');
+                input.focus();
+                input.select();
+
+                const saveRemark = () => {
+                    const newRemark = input.value.trim();
+                    if (newRemark) {
+                        customLayoutData[row][col] = { type: 'remark', content: newRemark, seat_id: null };
+                    } else {
+                        customLayoutData[row][col] = { type: 'empty', content: null, seat_id: null };
+                    }
+                    renderCustomTableEditor();
+                };
+
+                input.addEventListener('blur', saveRemark);
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        input.blur(); // 触发 blur 事件来保存
+                    } else if (e.key === 'Escape') {
+                        renderCustomTableEditor(); // 取消编辑，恢复原状
+                    }
+                });
+            }
+        } else if (action === 'clear-cell') {
+            customLayoutData[row][col] = { type: 'empty', content: null, seat_id: null };
+            renderCustomTableEditor();
+        }
+        
+        menu.remove();
+    });
+
+    // 点击菜单外部时关闭菜单
+    setTimeout(() => {
+        document.addEventListener('click', () => menu.remove(), { once: true });
+    }, 0);
+}
+
 // 页面加载时也尝试生成一次，以防有默认值
 document.addEventListener('DOMContentLoaded', () => {
-    dynamicGenerateAndPreviewTable(); 
-    closeSeatModificationDialog(); 
+    // 初始化时，根据默认模式 'classroom' 来生成预览
+    switchSeatMode(currentSeatMode);
+    closeSeatModificationDialog();
     
     // Function to sync heights of personnel info sections with table generator section
     function syncSectionHeights() {
@@ -1338,26 +1722,64 @@ aiArrangeButton.addEventListener('click', async () => {
     const remarks = arrangementRemarksInput.value.trim();
     const personnelTable = personnelDataToMarkdown(personnelData); 
     
-    const currentRows = parseInt(rowsInput.value);
-    const currentCol = parseInt(colsInput.value);
-    const currentDeskMates = parseInt(deskMatesInput.value);
+    let seatTableFormat = '';
+    let systemPromptSupplement = ''; // 用于自定义模式的提示词补充
 
-    if (currentRows < 1 || currentCol < 1 || currentDeskMates < 1) {
-        showInPageNotification('AI编排前，请确保行数、列数和同桌数均大于0。', 'warning');
-        return;
-    }
-    if (currentDeskMates > currentCol) {
-        showInPageNotification('AI编排前，请确保同桌数不大于列数。', 'warning');
-        return;
-    }
+    if (currentSeatMode === 'classroom') {
+        const currentRows = parseInt(rowsInput.value);
+        const currentCol = parseInt(colsInput.value);
+        const currentDeskMates = parseInt(deskMatesInput.value);
 
-    const currentEmptyTableMarkdown = generateEmptySeatTableMarkdown(currentRows, currentCol, currentDeskMates);
-    if (!currentEmptyTableMarkdown) {
-        showInPageNotification('无法生成座位表结构，请检查行列及同桌数设置。', 'error');
-        return;
+        if (currentRows < 1 || currentCol < 1 || currentDeskMates < 1) {
+            showInPageNotification('AI编排前，请确保行数、列数和同桌数均大于0。', 'warning');
+            return;
+        }
+        if (currentDeskMates > currentCol) {
+            showInPageNotification('AI编排前，请确保同桌数不大于列数。', 'warning');
+            return;
+        }
+
+        const classroomMarkdown = generateEmptySeatTableMarkdown(currentRows, currentCol, currentDeskMates);
+        if (!classroomMarkdown) {
+            showInPageNotification('无法生成座位表结构，请检查行列及同桌数设置。', 'error');
+            return;
+        }
+        localStorage.setItem('original_seat_format_markdown', classroomMarkdown);
+        seatTableFormat = classroomMarkdown;
+    } else { // 'custom' mode
+        let seatList = [];
+        let seatCounter = 1;
+        let header = '|';
+        let separator = '|';
+        const cols = customLayoutData.length > 0 ? customLayoutData[0].length : 0;
+        for (let i = 0; i < cols; i++) {
+            header += ` Col${i+1} |`;
+            separator += ` --- |`;
+        }
+        
+        let body = customLayoutData.map(row => {
+            let rowStr = '|';
+            row.forEach(cell => {
+                if (cell.type === 'seat') {
+                    rowStr += ` 座位${cell.seat_id} |`;
+                    seatList.push({ seat_id: cell.seat_id });
+                } else if (cell.type === 'remark') {
+                    rowStr += ` ${cell.content} |`;
+                } else {
+                    rowStr += `  |`;
+                }
+            });
+            return rowStr;
+        }).join('\n');
+
+        if (seatList.length === 0) {
+            showInPageNotification('请在自定义座位表中至少创建一个座位。', 'warning');
+            return;
+        }
+        
+        seatTableFormat = `${header}\n${separator}\n${body}`;
+        systemPromptSupplement = '请注意：你正在为一个用户自定义的、可能不规则的座位布局进行编排。座位并非标准矩阵排列。请根据提供的座位ID顺序和学生关系，在此特殊布局下做出最合理的安排。';
     }
-    localStorage.setItem('original_seat_format_markdown', currentEmptyTableMarkdown);
-    const seatTableFormat = currentEmptyTableMarkdown; 
 
     const seatingTaskConfig = getModelConfig('seating');
 
@@ -1410,6 +1832,7 @@ aiArrangeButton.addEventListener('click', async () => {
 
     const systemPrompt = `
 你的任务是根据提供的人物表和备注内容，为人物编排教室的座位，并按照座位表格式输出编排好的座位信息。
+${systemPromptSupplement}
 以下是参与座位编排的人物信息：
 <人物表>
 ${personnelTable}
@@ -1520,9 +1943,9 @@ ${seatTableFormatToUse}
                                 
                                 if (currentTableSegment.trim() && currentTableSegment.includes("|")) {
                                     let currentHtml = marked.parse(currentTableSegment);
-                                    tablePreviewDiv.innerHTML = currentHtml + '<span class="streaming-cursor"></span>';
-                                    applyGenderColoring(); 
-                                    displayOriginalSeatNumbers(); 
+                                    tableOutputDiv.innerHTML = currentHtml + '<span class="streaming-cursor"></span>';
+                                    applyGenderColoring();
+                                    displayOriginalSeatNumbers();
                                 }
                             }
                         }
@@ -1553,16 +1976,21 @@ ${seatTableFormatToUse}
         }
 
         if (finalTableMarkdown) {
-            tablePreviewDiv.innerHTML = marked.parse(finalTableMarkdown);
-            applyGenderColoring();
-            displayOriginalSeatNumbers();
             localStorage.setItem('arranged_seat_table_markdown', finalTableMarkdown);
+            if (currentSeatMode === 'classroom') {
+                tableOutputDiv.innerHTML = marked.parse(finalTableMarkdown);
+                applyGenderColoring();
+                displayOriginalSeatNumbers();
+            } else {
+                renderArrangedCustomTable(finalTableMarkdown);
+            }
+            
             if (aiThinkingOutputDiv && (!thinkingContent || thinkingContent.trim() === '')) {
                 aiThinkingOutputDiv.classList.remove('thinking-output-visible');
             }
             openSeatModificationDialog();
         } else {
-            tablePreviewDiv.innerHTML = '<p>AI 未能按预期格式返回编排好的座位表。</p>';
+            tableOutputDiv.innerHTML = '<p>AI 未能按预期格式返回编排好的座位表。</p>';
             if (aiThinkingOutputDiv && thinkingContent && thinkingContent.trim() !== '') {
                 aiThinkingOutputDiv.classList.add('thinking-output-visible');
             }
@@ -1570,7 +1998,7 @@ ${seatTableFormatToUse}
 
     } catch (error) {
         console.error('调用 API 进行座位编排时出错:', error);
-        tablePreviewDiv.innerHTML = `<p style="color: red;">座位编排失败: ${error.message}</p>`;
+        tableOutputDiv.innerHTML = `<p style="color: red;">座位编排失败: ${error.message}</p>`;
         if (aiThinkingOutputDiv && aiThinkingPre) {
             aiThinkingPre.textContent += `\n\n错误: ${error.message}`;
             aiThinkingOutputDiv.classList.add('thinking-output-visible'); 
@@ -1685,25 +2113,36 @@ if (importSeatTableButton) {
             showInPageNotification('Markdown格式似乎不正确，至少需要包含表头和分隔行。', 'warning');
             return;
         }
+        
+        if (currentSeatMode === 'classroom') {
+            tableOutputDiv.innerHTML = marked.parse(markdown);
+            localStorage.setItem('arranged_seat_table_markdown', markdown);
+            localStorage.setItem('original_seat_format_markdown', markdown);
 
-        tablePreviewDiv.innerHTML = marked.parse(markdown);
-        localStorage.setItem('arranged_seat_table_markdown', markdown); 
-        localStorage.setItem('original_seat_format_markdown', markdown); 
-
-        const { rows, cols, deskMates } = parseImportedTableStructure(markdown);
-        if (rows && cols && deskMates) {
-            rowsInput.value = rows;
-            colsInput.value = cols;
-            deskMatesInput.value = deskMates;
-            showInPageNotification(`座位表已成功导入并显示。检测到 ${rows} 行, ${cols} 列, ${deskMates} 同桌。`, 'success');
-        } else {
-            showInPageNotification('座位表已成功导入并显示。未能自动识别行列同桌数，请手动检查。', 'info');
+            const { rows, cols, deskMates } = parseImportedTableStructure(markdown);
+            if (rows && cols && deskMates) {
+                rowsInput.value = rows;
+                colsInput.value = cols;
+                deskMatesInput.value = deskMates;
+                showInPageNotification(`座位表已成功导入并显示。检测到 ${rows} 行, ${cols} 列, ${deskMates} 同桌。`, 'success');
+            } else {
+                showInPageNotification('座位表已成功导入并显示。未能自动识别行列同桌数，请手动检查。', 'info');
+            }
+            applyGenderColoring();
+            displayOriginalSeatNumbers();
+        } else { // Custom mode
+            customLayoutData = markdownToCustomLayoutData(markdown);
+            if (customLayoutData.length > 0) {
+                customRowsInput.value = customLayoutData.length;
+                customColsInput.value = customLayoutData[0].length;
+                renderCustomTableEditor();
+                showInPageNotification(`自定义座位表已成功导入。`, 'success');
+            } else {
+                showInPageNotification('未能从Markdown中解析出有效的自定义布局。', 'warning');
+            }
         }
         
-        importSeatTableMarkdownTextarea.value = ''; 
-
-        applyGenderColoring(); 
-        displayOriginalSeatNumbers(); 
+        importSeatTableMarkdownTextarea.value = '';
         openSeatModificationDialog();
     });
 }
@@ -1821,8 +2260,8 @@ if (sendSeatModificationButton) {
 
         if (!currentSeatTable || currentSeatTable.trim() === "") {
             currentSeatTable = originalSeatFormat;
-            if (tablePreviewDiv.innerHTML.trim() === "" && originalSeatFormat) {
-                 tablePreviewDiv.innerHTML = marked.parse(originalSeatFormat);
+            if (tableOutputDiv.innerHTML.trim() === "" && originalSeatFormat) {
+                 tableOutputDiv.innerHTML = marked.parse(originalSeatFormat);
             }
         }
         
@@ -1996,8 +2435,13 @@ ${seatMappingInfo}
             const { newSeatTableMarkdown, changesSummary } = processSeatChanges(accumulatedResponse, currentArrangedTableForProcessing, originalFormatForProcessing);
 
             if (newSeatTableMarkdown) {
-                tablePreviewDiv.innerHTML = marked.parse(newSeatTableMarkdown); 
-                localStorage.setItem('arranged_seat_table_markdown', newSeatTableMarkdown); 
+                localStorage.setItem('arranged_seat_table_markdown', newSeatTableMarkdown);
+                if (currentSeatMode === 'classroom') {
+                    tableOutputDiv.innerHTML = marked.parse(newSeatTableMarkdown);
+                    displayOriginalSeatNumbers();
+                } else {
+                    renderArrangedCustomTable(newSeatTableMarkdown);
+                }
                 applyGenderColoring();
                 displayOriginalSeatNumbers(); 
                 if (seatModificationOutput) {
@@ -2240,17 +2684,49 @@ importPersonnelButton.addEventListener('click', () => {
 
 // Event listener for copying the arranged seat table
 copyArrangedTableButton.addEventListener('click', () => {
-    const arrangedMarkdownTable = localStorage.getItem('arranged_seat_table_markdown') || '';
-    if (arrangedMarkdownTable) {
-        navigator.clipboard.writeText(arrangedMarkdownTable).then(() => {
+    let markdownToCopy = '';
+    if (currentSeatMode === 'classroom') {
+        markdownToCopy = localStorage.getItem('arranged_seat_table_markdown') || '';
+    } else {
+        // For custom mode, we might want to copy the AI's raw output, which is already stored
+        markdownToCopy = localStorage.getItem('arranged_seat_table_markdown') || '';
+        // If there's no arranged table, maybe copy the current layout definition? For now, let's stick to the arranged one.
+    }
+
+    if (markdownToCopy) {
+        navigator.clipboard.writeText(markdownToCopy).then(() => {
             showInPageNotification('编排好的座位表已复制到剪贴板！', 'success');
         }, () => {
             showInPageNotification('复制失败，请手动复制表格内容。', 'error');
         });
     } else {
-        showInPageNotification('请先进行AI智能编排。', 'warning');
+        showInPageNotification('没有可复制的编排结果。请先进行AI智能编排。', 'warning');
     }
 });
+
+// --- 新增：清空座位按钮事件监听 ---
+if (clearSeatTableButton) {
+    clearSeatTableButton.addEventListener('click', () => {
+        if (confirm('确定要清空所有座位上的人员安排吗？此操作会保留座位布局。')) {
+            localStorage.removeItem('arranged_seat_table_markdown');
+            if (currentSeatMode === 'classroom') {
+                dynamicGenerateAndPreviewTable(); // 重新生成空的教室表格
+            } else {
+                // 清空自定义布局中的人名
+                for (let i = 0; i < customLayoutData.length; i++) {
+                    for (let j = 0; j < customLayoutData[i].length; j++) {
+                        if (customLayoutData[i][j].type === 'seat') {
+                            customLayoutData[i][j].content = null;
+                        }
+                    }
+                }
+                renderCustomTableEditor();
+            }
+            closeSeatModificationDialog();
+            showInPageNotification('座位已清空。', 'success');
+        }
+    });
+}
 
 // Event listener for copying the personnel info
 if (copyPersonnelInfoButton) {

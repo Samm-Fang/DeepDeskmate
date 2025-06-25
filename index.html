@@ -60,19 +60,30 @@
             </div>
 
             <div class="table-generator-section">
-                <h2>座位列表生成器</h2>
-                <div class="generator-controls">
+                <div class="section-header-controls">
+                    <h2>座位列表生成器</h2>
+                    <div class="tabs">
+                        <button id="mode-classroom" class="tab-button active" data-mode="classroom">教室座位表</button>
+                        <button id="mode-custom" class="tab-button" data-mode="custom">自定义座位</button>
+                    </div>
+                </div>
+                <div id="classroom-controls" class="generator-controls">
                     <label for="rows">行数:</label>
                     <input type="number" id="rows" min="1" value="8">
                     <label for="cols">列数:</label>
                     <input type="number" id="cols" min="1" value="7">
                     <label for="desk-mates">同桌数:</label>
                     <input type="number" id="desk-mates" min="1" value="2">
-                    <div class="generator-buttons">
-                        <!-- <button id="ai-arrange-button">AI 智能编排</button> --> <!-- 按钮将移动 -->
-                        <button id="copy-arranged-table" class="secondary-button">复制编排结果</button>
-                        <!-- <button id="send-seat-modification-button" style="display: none;">发送修改指令</button> --> <!-- 按钮将移动 -->
-                    </div>
+                </div>
+                <div id="custom-controls" class="generator-controls" style="display: none;">
+                    <label for="custom-rows">表格行数:</label>
+                    <input type="number" id="custom-rows" min="1" value="10">
+                    <label for="custom-cols">表格列数:</label>
+                    <input type="number" id="custom-cols" min="1" value="10">
+                </div>
+                <div class="generator-buttons">
+                    <button id="copy-arranged-table" class="secondary-button">复制编排结果</button>
+                    <button id="clear-seat-table" class="secondary-button">清空座位</button>
                 </div>
                 <div class="arrangement-section">
                     <div class="arrangement-remarks-wrapper">
@@ -112,6 +123,7 @@
                 </div>
                 <!-- arrangement-actions div removed as its content moved -->
                 <div id="table-preview">
+                    <div id="table-output"></div>
                     <img src="images/generating-table.gif" class="streaming-gif" style="display: none;" alt="AI is generating table...">
                 </div>
 

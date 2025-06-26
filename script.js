@@ -1568,12 +1568,8 @@ tablePreviewDiv.addEventListener('click', (event) => {
     }
     // 如果已经是座位，再次点击不执行任何操作，以防误触
     
-    // renderCustomTableEditor(); // 重新渲染以更新UI和座位号
-    // 优化：不再全量渲染，而是只更新目标单元格
-    updateSeatIdsInData(); // 确保ID是最新的
-    const newCellData = customLayoutData[row][col]; // 获取更新后的数据
-    cell.className = 'custom-cell seat-cell'; // 更新class
-    cell.innerHTML = `座位${newCellData.seat_id}`; // 更新内容
+    // 撤销错误的优化，恢复完整的重新渲染以修复座位号BUG
+    renderCustomTableEditor();
 });
 
 tablePreviewDiv.addEventListener('contextmenu', (event) => {
@@ -1957,7 +1953,7 @@ ${seatTableFormatToUse}
                                 manageStreamingGif(tablePreviewDiv, generatingGif, 'start');
                             }
 
-                            accumulatedContent += outputContent; 
+                            accumulatedContent += outputContent;
                             const tableStartTag = "<编排好的座位表>";
                             const tableEndTag = "</编排好的座位表>";
                             let currentTableSegment = "";
@@ -1966,11 +1962,9 @@ ${seatTableFormatToUse}
                                 let endIndex = accumulatedContent.indexOf(tableEndTag);
                                 currentTableSegment = endIndex === -1 ? accumulatedContent.substring(startIndex) : accumulatedContent.substring(startIndex, endIndex);
                                 
+                                // 修复BUG 1: 使用新的流式更新函数替换旧的innerHTML逻辑
                                 if (currentTableSegment.trim() && currentTableSegment.includes("|")) {
-                                    let currentHtml = marked.parse(currentTableSegment);
-                                    tableOutputDiv.innerHTML = currentHtml + '<span class="streaming-cursor"></span>';
-                                    applyGenderColoring();
-                                    displayOriginalSeatNumbers();
+                                    streamUpdateTable(currentTableSegment);
                                 }
                             }
                         }
@@ -2060,16 +2054,26 @@ function applyGenderColoring() {
 
     const cells = tableElement.querySelectorAll('td');
     cells.forEach(cell => {
-        cell.style.backgroundColor = ''; 
-        const name = cell.textContent.trim();
+        cell.style.backgroundColor = '';
+        // 修复BUG 2: 改进人名提取逻辑以兼容自定义座位模式
+        let name = '';
+        const seatNameSpan = cell.querySelector('.seat-name');
+        if (seatNameSpan) {
+            // 自定义模式下，从 .seat-name span 中取值
+            name = seatNameSpan.textContent.trim();
+        } else {
+            // 教室模式或无span时，直接取单元格内容
+            name = cell.textContent.trim();
+        }
+        
         const nameWithoutStatus = name.replace(/\s*（未被编排）$/, '').trim();
 
         if (genderMap[nameWithoutStatus]) {
-            if (genderMap[nameWithoutStatus].includes('男')) cell.style.backgroundColor = '#e6f3ff';
-            else if (genderMap[nameWithoutStatus].includes('女')) cell.style.backgroundColor = '#ffe6f2';
-        } else if (genderMap[name]) { 
-             if (genderMap[name].includes('男')) cell.style.backgroundColor = '#e6f3ff';
-             else if (genderMap[name].includes('女')) cell.style.backgroundColor = '#ffe6f2';
+            if (genderMap[nameWithoutStatus].includes('男')) {
+                cell.style.backgroundColor = '#e6f3ff';
+            } else if (genderMap[nameWithoutStatus].includes('女')) {
+                cell.style.backgroundColor = '#ffe6f2';
+            }
         }
     });
 }
@@ -2082,7 +2086,7 @@ function displayOriginalSeatNumbers() {
     tableElement.querySelectorAll('.original-seat-number-bg').forEach(span => span.remove());
 
     const originalSeatFormatMarkdown = localStorage.getItem('original_seat_format_markdown');
-    if (!originalSeatFormatMarkdown) { 
+    if (!originalSeatFormatMarkdown) {
         console.warn("displayOriginalSeatNumbers: original_seat_format_markdown not found in localStorage.");
         return;
     }
@@ -2091,25 +2095,25 @@ function displayOriginalSeatNumbers() {
     
     const tbody = tableElement.querySelector('tbody');
     if (!tbody) return;
-    const dataRows = Array.from(tbody.rows); 
+    const dataRows = Array.from(tbody.rows);
 
     dataRows.forEach((htmlRow, rowIndex) => {
         Array.from(htmlRow.cells).forEach((cell, cellIndex) => {
-            const originalRowIndexInArray = rowIndex + 2; 
+            const originalRowIndexInArray = rowIndex + 2;
 
             if (originalFormatArray[originalRowIndexInArray] && originalFormatArray[originalRowIndexInArray][cellIndex] !== undefined) {
                 const originalSeatPlaceholder = originalFormatArray[originalRowIndexInArray][cellIndex].trim();
                 const currentCellContent = cell.textContent.trim();
 
-                if (originalSeatPlaceholder && 
-                    !originalSeatPlaceholder.toLowerCase().includes('走廊') && 
+                if (originalSeatPlaceholder &&
+                    !originalSeatPlaceholder.toLowerCase().includes('走廊') &&
                     originalSeatPlaceholder.trim() !== '' &&
-                    currentCellContent && 
+                    currentCellContent &&
                     currentCellContent.toLowerCase() !== '空座位' &&
                     currentCellContent !== originalSeatPlaceholder &&
                     !currentCellContent.toLowerCase().includes('走廊')) {
                     
-                    const seatNumberMatch = originalSeatPlaceholder.match(/\d+/); 
+                    const seatNumberMatch = originalSeatPlaceholder.match(/\d+/);
                     if (seatNumberMatch) {
                         const originalNumber = seatNumberMatch[0];
                         const bgNumberSpan = document.createElement('span');
@@ -2124,6 +2128,41 @@ function displayOriginalSeatNumbers() {
             }
         });
     });
+}
+
+/**
+ * 修复BUG 1: 流式更新表格内容，而不是替换整个HTML
+ * @param {string} markdownSegment - AI返回的Markdown表格片段
+ */
+function streamUpdateTable(markdownSegment) {
+    const table = tableOutputDiv.querySelector('table');
+    if (!table) {
+        // 如果还没有表格，就用旧方法先渲染出来
+        tableOutputDiv.innerHTML = marked.parse(markdownSegment);
+        return;
+    }
+
+    const streamingData = markdownTableToArray(markdownSegment);
+    const headerRows = 2; // 表头和分隔线
+    const domRows = table.rows;
+
+    for (let i = headerRows; i < streamingData.length; i++) {
+        const dataRowIndex = i - headerRows;
+        if (domRows[dataRowIndex + 1]) { // +1 to skip thead
+            const cells = domRows[dataRowIndex + 1].cells;
+            for (let j = 0; j < streamingData[i].length; j++) {
+                if (cells[j]) {
+                    const newContent = streamingData[i][j];
+                    // 仅在内容不同时更新，减少DOM操作
+                    if (cells[j].textContent !== newContent) {
+                         cells[j].textContent = newContent;
+                    }
+                }
+            }
+        }
+    }
+    applyGenderColoring();
+    displayOriginalSeatNumbers();
 }
 
 

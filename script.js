@@ -131,6 +131,7 @@ const customColsInput = document.getElementById('custom-cols');
 
 let currentSeatMode = 'classroom'; // 'classroom' or 'custom'
 let customLayoutData = []; // 二维数组，用于存储自定义布局
+let recentRemarks = []; // 新增：用于存储最近使用过的备注
 // const generateTableButton = document.getElementById('generate-table'); // 按钮已被移除或功能合并
 
 // Sidebar elements
@@ -1334,6 +1335,7 @@ function renderCustomTableEditor() {
     tableOutputDiv.innerHTML = tableHtml;
     // localStorage.setItem('arranged_seat_table_markdown', ''); // 不在此处清空，仅在清空按钮处清空
     closeSeatModificationDialog();
+    applyGenderColoring(); // 修复BUG 2: 确保每次重新渲染后都应用颜色
 }
 
 /**
@@ -1615,12 +1617,21 @@ function showCustomContextMenu(x, y, row, col) {
         menuItems += `<div class="context-menu-item" data-action="clear-cell">清空单元格</div>`;
     }
 
+    // 新增功能 3: 添加最近使用过的备注
+    if (recentRemarks.length > 0) {
+        menuItems += '<div class="context-menu-divider"></div>'; // 分隔线
+        menuItems += '<h6>最近的备注</h6>';
+        recentRemarks.forEach(remark => {
+            menuItems += `<div class="context-menu-item recent-remark-item" data-action="apply-remark" data-remark="${remark}">${remark}</div>`;
+        });
+    }
 
     menu.innerHTML = menuItems;
     document.body.appendChild(menu);
 
     menu.addEventListener('click', (event) => {
         const action = event.target.dataset.action;
+
         if (action === 'delete-seat') {
             customLayoutData[row][col] = { type: 'empty', content: null, seat_id: null };
             renderCustomTableEditor();
@@ -1636,7 +1647,15 @@ function showCustomContextMenu(x, y, row, col) {
                     const newRemark = input.value.trim();
                     if (newRemark) {
                         customLayoutData[row][col] = { type: 'remark', content: newRemark, seat_id: null };
+                        // 新增功能 3: 将新备注添加到最近列表中
+                        if (!recentRemarks.includes(newRemark)) {
+                            recentRemarks.unshift(newRemark); // 添加到最前面
+                            if (recentRemarks.length > 5) { // 最多保留5个
+                                recentRemarks.pop();
+                            }
+                        }
                     } else {
+                        // 如果备注被清空，则将单元格变回 empty
                         customLayoutData[row][col] = { type: 'empty', content: null, seat_id: null };
                     }
                     renderCustomTableEditor();
@@ -1654,9 +1673,18 @@ function showCustomContextMenu(x, y, row, col) {
         } else if (action === 'clear-cell') {
             customLayoutData[row][col] = { type: 'empty', content: null, seat_id: null };
             renderCustomTableEditor();
+        } else if (action === 'apply-remark') {
+            const remarkToApply = event.target.dataset.remark;
+            if (remarkToApply) {
+                customLayoutData[row][col] = { type: 'remark', content: remarkToApply, seat_id: null };
+                renderCustomTableEditor();
+            }
         }
         
-        menu.remove();
+        // 只有在不是编辑模式时才立即移除菜单
+        if (action !== 'edit-remark') {
+            menu.remove();
+        }
     });
 
     // 点击菜单外部时关闭菜单
@@ -2136,33 +2164,87 @@ function displayOriginalSeatNumbers() {
  */
 function streamUpdateTable(markdownSegment) {
     const table = tableOutputDiv.querySelector('table');
-    if (!table) {
-        // 如果还没有表格，就用旧方法先渲染出来
-        tableOutputDiv.innerHTML = marked.parse(markdownSegment);
+    const tbody = table ? table.querySelector('tbody') : null;
+    if (!tbody) {
+        // Fallback if table or tbody doesn't exist yet, render the whole thing
+        const fullHtml = marked.parse(markdownSegment);
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = fullHtml;
+        if (tempDiv.querySelector('table')) {
+            tableOutputDiv.innerHTML = tempDiv.innerHTML;
+        }
         return;
     }
 
     const streamingData = markdownTableToArray(markdownSegment);
-    const headerRows = 2; // 表头和分隔线
-    const domRows = table.rows;
+    const domRows = tbody.rows;
 
-    for (let i = headerRows; i < streamingData.length; i++) {
-        const dataRowIndex = i - headerRows;
-        if (domRows[dataRowIndex + 1]) { // +1 to skip thead
-            const cells = domRows[dataRowIndex + 1].cells;
-            for (let j = 0; j < streamingData[i].length; j++) {
-                if (cells[j]) {
-                    const newContent = streamingData[i][j];
-                    // 仅在内容不同时更新，减少DOM操作
-                    if (cells[j].textContent !== newContent) {
-                         cells[j].textContent = newContent;
+    // Find the index of the first data row in the streamed data (the one after the '---' separator)
+    let streamDataStartIndex = -1;
+    for (let i = 0; i < streamingData.length; i++) {
+        if (streamingData[i].some(cell => cell.includes('---'))) {
+            streamDataStartIndex = i + 1;
+            break;
+        }
+    }
+
+    // If no separator is found (AI might not send it), assume data starts at row 0 if it doesn't look like a header
+    if (streamDataStartIndex === -1 && streamingData.length > 0) {
+        if (streamingData[0].some(cell => cell.toLowerCase().includes('col')) || streamingData[0].some(cell => cell.toLowerCase().includes('座位'))) {
+             // Looks like a header, but no separator yet, so we can't process.
+             return;
+        }
+        streamDataStartIndex = 0;
+    }
+
+    if (streamDataStartIndex === -1) return; // Still can't find data start
+    
+    // Iterate over the DOM rows and update them from the corresponding stream data row
+    for (let r = 0; r < domRows.length; r++) {
+        const streamRowIndex = streamDataStartIndex + r;
+        const streamRow = streamingData[streamRowIndex];
+        
+        if (!streamRow) continue; // Stream hasn't sent this row yet
+
+        const domCells = domRows[r].cells;
+        for (let c = 0; c < domCells.length; c++) {
+            if (!streamRow[c]) continue; // Stream hasn't sent this cell yet
+
+            const newContent = streamRow[c].trim();
+            
+            // Filter out placeholders and invalid content
+            if (newContent === '' || newContent.toLowerCase() === '空座位' || newContent.startsWith('座位')) {
+                continue;
+            }
+
+            // Update DOM for custom mode
+            if (currentSeatMode === 'custom') {
+                const seatNameSpan = domCells[c].querySelector('.seat-name');
+                if (seatNameSpan) {
+                    if (seatNameSpan.textContent !== newContent) {
+                        seatNameSpan.textContent = newContent;
                     }
+                } else {
+                    // This case handles when a seat was empty and now gets a name
+                    const seatIdSpan = domCells[c].querySelector('.seat-id');
+                    const seatId = seatIdSpan ? seatIdSpan.textContent : (domCells[c].textContent.match(/\d+/) ? domCells[c].textContent.match(/\d+/)[0] : '');
+                    if (domCells[c].textContent !== newContent) { // Avoid unnecessary redraw
+                       domCells[c].innerHTML = `<span class="seat-id">${seatId}</span><span class="seat-name">${newContent}</span>`;
+                    }
+                }
+            } else { // classroom mode
+                if (domCells[c].textContent !== newContent) {
+                    domCells[c].textContent = newContent;
                 }
             }
         }
     }
+
     applyGenderColoring();
-    displayOriginalSeatNumbers();
+    // 修复BUG 1: 仅在教室模式下显示原始座位号
+    if (currentSeatMode === 'classroom') {
+        displayOriginalSeatNumbers();
+    }
 }
 
 

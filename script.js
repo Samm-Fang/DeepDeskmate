@@ -3237,49 +3237,37 @@ async function sendAgentMessage(isContinuation = false, continuationParams = {})
         return;
     }
 
+    // 修复BUG：将提示词生成和消息体构建移到此处，确保 userMessageContent 已被正确赋值
+    const { systemPrompt, contextPrompt } = getUnifiedAgentSystemPrompt(userMessageContent);
+    const messagesForAPI = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: contextPrompt },
+        { role: 'user', content: userMessageContent }
+    ];
+    console.log("[Agent] Messages for API constructed:", JSON.stringify(messagesForAPI, null, 2));
+
     agentSendButton.disabled = true;
 
     // 添加用户消息到对话历史
     if (!isContinuation) {
         agentConversationHistory.push({ role: 'user', content: userMessageContent });
     }
-    // 对于延续性的调用，其提示语是系统生成的，不应作为用户消息添加到历史记录中。
-    // 因此，移除了原有的 else if 分支。
-
 
     const aiMessageId = `agent-msg-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
     let aiMessageDiv = createAgentMessageElement('assistant', 'AI 正在思考中...', aiMessageId);
     agentChatMessages.appendChild(aiMessageDiv);
     let aiMessageContentDiv = aiMessageDiv.querySelector('.agent-message-content');
-    // Ensure the thinking message is visible and scroll to it
     agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
 
     const agentGif = document.getElementById('agent-streaming-gif');
-    // For agent, thinking and generating are handled differently.
-    // Start with fixed position, then switch to full-follow.
-    agentGif.classList.add('thinking-mode'); // Start fixed at bottom-left
+    agentGif.classList.add('thinking-mode');
     manageStreamingGif(aiMessageContentDiv, agentGif, 'start', 'bottom-follow');
 
-
     try {
-        // 获取拆分后的提示词
-        const { systemPrompt, contextPrompt } = getUnifiedAgentSystemPrompt(userMessageContent);
-        console.log("[Agent] System Prompt for API:", systemPrompt);
-        console.log("[Agent] Context Prompt for API:", contextPrompt);
-
-        // 构建发送给API的消息体
-        const messagesForAPI = [
-            { role: 'system', content: systemPrompt },
-            // 将上下文作为第一条用户消息发送，用户的实际请求作为第二条
-            { role: 'user', content: contextPrompt },
-            { role: 'user', content: userMessageContent }
-        ];
-        console.log("[Agent] Messages for API:", JSON.stringify(messagesForAPI, null, 2)); // 日志3
-        
-        let accumulatedAiResponse = ""; 
+        let accumulatedAiResponse = "";
 
         try {
-            console.log(`[Agent] Fetching from: ${agentConfig.baseURL}/v1/chat/completions with model ${agentConfig.modelId}`); // 日志4
+            console.log(`[Agent] Fetching from: ${agentConfig.baseURL}/v1/chat/completions with model ${agentConfig.modelId}`);
             const response = await fetch(`${agentConfig.baseURL}/v1/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -3288,10 +3276,10 @@ async function sendAgentMessage(isContinuation = false, continuationParams = {})
                 },
                 body: JSON.stringify({
                     model: agentConfig.modelId,
-                    messages: messagesForAPI,
+                    messages: messagesForAPI, // 使用已构建好的消息体
                     temperature: 0.7,
                     max_tokens: 2000,
-                    stream: true // 启用流式传输
+                    stream: true
                 })
             });
 

@@ -1712,12 +1712,15 @@ button.danger-button:hover { background-color: #c0392b; }
     transition: background-color 0.2s;
 }
 
-.custom-cell.empty-cell:hover {
-    background-color: #f0fff0; /* 鼠标悬停在空单元格上时显示淡绿色 */
+/* 修复BUG 4b: 统一悬停效果，并提高选择器特异性以覆盖偶数行样式 */
+#table-preview .custom-cell:not(.remark-cell):hover {
+    background-color: #d4edda !important; /* 使用更明显的绿色，并使用 !important 确保覆盖 */
 }
 
+/* 修复BUG 4b: 移除座位单元格的蓝色背景，使其与普通单元格背景一致 */
 .custom-cell.seat-cell {
-    background-color: #e6f3ff; /* 默认座位颜色 */
+    /* background-color: #e6f3ff; */ /* 已移除蓝色背景 */
+    font-weight: bold; /* 让座位号或人名更突出 */
 }
 
 .custom-cell.remark-cell {

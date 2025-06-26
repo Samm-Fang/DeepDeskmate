@@ -1303,6 +1303,9 @@ function renderCustomTableEditor() {
         );
     }
     
+    // 修复BUG 4a: 先更新数据模型中的ID，再根据模型生成HTML
+    updateSeatIdsInData();
+
     let tableHtml = '<table id="custom-seat-table" class="custom-seat-table">';
     for (let i = 0; i < rows; i++) {
         tableHtml += '<tr>';
@@ -1315,7 +1318,8 @@ function renderCustomTableEditor() {
                 if (cellData.content) { // 如果有编排内容（人名）
                     cellContent = `<span class="seat-id">${cellData.seat_id}</span><span class="seat-name">${cellData.content}</span>`;
                 } else { // 如果只是空座位
-                    cellContent = `座位${cellData.seat_id || ''}`;
+                    // 现在 seat_id 已经提前更新，所以这里总能获取到
+                    cellContent = `座位${cellData.seat_id}`;
                 }
             } else if (cellData.type === 'remark') {
                 cellClass = 'remark-cell';
@@ -1328,32 +1332,27 @@ function renderCustomTableEditor() {
     tableHtml += '</table>';
 
     tableOutputDiv.innerHTML = tableHtml;
-    updateSeatIds(); // 确保在渲染后更新座位号
     // localStorage.setItem('arranged_seat_table_markdown', ''); // 不在此处清空，仅在清空按钮处清空
     closeSeatModificationDialog();
 }
 
 /**
- * 更新所有座位的 seat_id
- */
-function updateSeatIds() {
-    let seatCounter = 1;
-    for (let i = 0; i < customLayoutData.length; i++) {
-        for (let j = 0; j < customLayoutData[i].length; j++) {
-            const cellData = customLayoutData[i][j];
-            if (cellData.type === 'seat') {
-                cellData.seat_id = seatCounter++;
-                const cellElement = document.querySelector(`.custom-cell[data-row="${i}"][data-col="${j}"] .seat-id`);
-                if (cellElement) {
-                    cellElement.textContent = cellData.seat_id;
-                }
-            } else {
-                cellData.seat_id = null;
-            }
-        }
-    }
-}
-
+ /**
+  * 仅更新数据模型 customLayoutData 中的 seat_id
+  */
+ function updateSeatIdsInData() {
+     let seatCounter = 1;
+     for (let i = 0; i < customLayoutData.length; i++) {
+         for (let j = 0; j < customLayoutData[i].length; j++) {
+             const cellData = customLayoutData[i][j];
+             if (cellData.type === 'seat') {
+                 cellData.seat_id = seatCounter++;
+             } else {
+                 cellData.seat_id = null;
+             }
+         }
+     }
+ }
 /**
  * 将Markdown表格解析为 customLayoutData 格式
  * @param {string} markdown - Markdown表格字符串
@@ -1508,12 +1507,20 @@ function renderArrangedCustomTable(arrangedMarkdown) {
 
 // --- 模式切换逻辑 ---
 function switchSeatMode(mode) {
+    // 修复BUG 1: 如果AI正在运行，则不允许切换
+    if (aiArrangeButton.disabled) {
+        showInPageNotification('AI正在生成座位中，请稍后切换模式。', 'warning');
+        return;
+    }
+
     if (mode === 'classroom') {
         currentSeatMode = 'classroom';
         modeClassroomButton.classList.add('active');
         modeCustomButton.classList.remove('active');
         classroomControls.style.display = 'block';
         customControls.style.display = 'none';
+        // 修复BUG 3: 清理自定义模式的数据
+        customLayoutData = [];
         dynamicGenerateAndPreviewTable(); // 渲染教室模式的预览
     } else if (mode === 'custom') {
         currentSeatMode = 'custom';
@@ -1521,6 +1528,8 @@ function switchSeatMode(mode) {
         modeClassroomButton.classList.remove('active');
         customControls.style.display = 'block';
         classroomControls.style.display = 'none';
+        // 修复BUG 3: 清理教室模式的编排结果
+        localStorage.removeItem('arranged_seat_table_markdown');
         renderCustomTableEditor(); // 渲染自定义模式的编辑器
     }
 }
@@ -1559,7 +1568,12 @@ tablePreviewDiv.addEventListener('click', (event) => {
     }
     // 如果已经是座位，再次点击不执行任何操作，以防误触
     
-    renderCustomTableEditor(); // 重新渲染以更新UI和座位号
+    // renderCustomTableEditor(); // 重新渲染以更新UI和座位号
+    // 优化：不再全量渲染，而是只更新目标单元格
+    updateSeatIdsInData(); // 确保ID是最新的
+    const newCellData = customLayoutData[row][col]; // 获取更新后的数据
+    cell.className = 'custom-cell seat-cell'; // 更新class
+    cell.innerHTML = `座位${newCellData.seat_id}`; // 更新内容
 });
 
 tablePreviewDiv.addEventListener('contextmenu', (event) => {
@@ -1816,19 +1830,30 @@ aiArrangeButton.addEventListener('click', async () => {
              return;
         }
     }
-    let seatTableFormatToUse = localStorage.getItem('original_seat_format_markdown');
-    if (!seatTableFormatToUse) {
-        dynamicGenerateAndPreviewTable();
+    let seatTableFormatToUse = '';
+    if (currentSeatMode === 'classroom') {
         seatTableFormatToUse = localStorage.getItem('original_seat_format_markdown');
         if (!seatTableFormatToUse) {
-            showInPageNotification('无法获取座位表格式，请检查行列及同桌数设置。', 'error');
-            aiArrangeButton.disabled = false; 
-            return;
+            dynamicGenerateAndPreviewTable();
+            seatTableFormatToUse = localStorage.getItem('original_seat_format_markdown');
+            if (!seatTableFormatToUse) {
+                showInPageNotification('无法获取教室座位表格式，请检查行列及同桌数设置。', 'error');
+                return;
+            }
+        }
+    } else { // 'custom' mode
+        // 修复BUG 2: 确保使用为自定义模式动态生成的seatTableFormat
+        seatTableFormatToUse = seatTableFormat;
+        if (!seatTableFormatToUse) {
+             showInPageNotification('无法获取自定义座位表格式。', 'error');
+             return;
         }
     }
 
-
+    // 修复BUG 1: 禁用模式切换按钮
     aiArrangeButton.disabled = true;
+    modeClassroomButton.disabled = true;
+    modeCustomButton.disabled = true;
 
     const systemPrompt = `
 你的任务是根据提供的人物表和备注内容，为人物编排教室的座位，并按照座位表格式输出编排好的座位信息。
@@ -2005,6 +2030,9 @@ ${seatTableFormatToUse}
         }
     } finally {
         aiArrangeButton.disabled = false;
+        // 修复BUG 1: 重新启用模式切换按钮
+        modeClassroomButton.disabled = false;
+        modeCustomButton.disabled = false;
         if (aiThinkingOutputDiv) {
             const thinkingGif = aiThinkingOutputDiv.querySelector('.streaming-gif');
             manageStreamingGif(null, thinkingGif, 'end');

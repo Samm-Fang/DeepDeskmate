@@ -132,6 +132,9 @@ const customColsInput = document.getElementById('custom-cols');
 let currentSeatMode = 'classroom'; // 'classroom' or 'custom'
 let customLayoutData = []; // 二维数组，用于存储自定义布局
 let recentRemarks = []; // 新增：用于存储最近使用过的备注
+let isSelecting = false;
+let selectionStartCell = { row: -1, col: -1 };
+let selectedCells = [];
 // const generateTableButton = document.getElementById('generate-table'); // 按钮已被移除或功能合并
 
 // Sidebar elements
@@ -1556,10 +1559,52 @@ if (customColsInput) {
 }
 
 // --- 新增：自定义表格交互事件监听 ---
+tablePreviewDiv.addEventListener('mousedown', (event) => {
+    if (currentSeatMode !== 'custom' || event.button !== 0) return; // 只响应左键
+    const cell = event.target.closest('.custom-cell');
+    if (!cell) return;
+
+    isSelecting = true;
+    const row = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
+    selectionStartCell = { row, col };
+    
+    // 清除旧的选区
+    clearSelection();
+    selectedCells.push(selectionStartCell);
+    cell.classList.add('selected');
+
+    // 阻止默认的文本选择行为
+    event.preventDefault();
+});
+
+tablePreviewDiv.addEventListener('mouseover', (event) => {
+    if (!isSelecting || currentSeatMode !== 'custom') return;
+    const cell = event.target.closest('.custom-cell');
+    if (!cell) return;
+
+    const row = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
+
+    updateSelection(row, col);
+});
+
+window.addEventListener('mouseup', (event) => {
+    if (event.button !== 0) return;
+    isSelecting = false;
+    selectionStartCell = { row: -1, col: -1 };
+});
+
+
 tablePreviewDiv.addEventListener('click', (event) => {
     if (currentSeatMode !== 'custom') return;
     const cell = event.target.closest('.custom-cell');
     if (!cell) return;
+
+    // 如果是拖拽结束后的单击，不清空选区
+    if (selectedCells.length > 1) return;
+
+    clearSelection(); // 单击时清空其他选区
 
     const row = parseInt(cell.dataset.row);
     const col = parseInt(cell.dataset.col);
@@ -1568,9 +1613,7 @@ tablePreviewDiv.addEventListener('click', (event) => {
     if (cellData.type === 'empty') {
         cellData.type = 'seat';
     }
-    // 如果已经是座位，再次点击不执行任何操作，以防误触
     
-    // 撤销错误的优化，恢复完整的重新渲染以修复座位号BUG
     renderCustomTableEditor();
 });
 
@@ -1586,6 +1629,32 @@ tablePreviewDiv.addEventListener('contextmenu', (event) => {
     showCustomContextMenu(event.clientX, event.clientY, row, col);
 });
 
+function clearSelection() {
+    document.querySelectorAll('.custom-cell.selected').forEach(c => c.classList.remove('selected'));
+    selectedCells = [];
+}
+
+function updateSelection(endRow, endCol) {
+    clearSelection();
+    const startRow = selectionStartCell.row;
+    const startCol = selectionStartCell.col;
+
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+
+    for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+            const cell = document.querySelector(`.custom-cell[data-row="${r}"][data-col="${c}"]`);
+            if (cell) {
+                cell.classList.add('selected');
+                selectedCells.push({ row: r, col: c });
+            }
+        }
+    }
+}
+
 /**
  * 显示自定义的上下文菜单
  * @param {number} x - 鼠标X坐标
@@ -1598,31 +1667,32 @@ function showCustomContextMenu(x, y, row, col) {
     const existingMenu = document.getElementById('custom-seat-context-menu');
     if (existingMenu) existingMenu.remove();
 
-    const cellData = customLayoutData[row][col];
-    
+    // 确定目标单元格：如果点击在选区内，则目标是整个选区；否则是单个单元格
+    const clickedCellIsSelected = selectedCells.some(c => c.row === row && c.col === col);
+    const targetCells = (selectedCells.length > 0 && clickedCellIsSelected) ? selectedCells : [{ row, col }];
+
     const menu = document.createElement('div');
     menu.id = 'custom-seat-context-menu';
     menu.style.top = `${y}px`;
     menu.style.left = `${x}px`;
 
     let menuItems = '';
+    const isMultiSelect = targetCells.length > 1;
 
-    if (cellData.type === 'seat') {
-        menuItems += `<div class="context-menu-item" data-action="delete-seat">删除座位</div>`;
-    }
+    // 根据是单选还是多选来生成不同的菜单项
+    menuItems += `<div class="context-menu-item" data-action="create-seats">创建座位</div>`;
+    menuItems += `<div class="context-menu-item" data-action="delete-seats">删除座位</div>`;
+    menuItems += `<div class="context-menu-item" data-action="clear-cells">清空单元格</div>`;
     
-    menuItems += `<div class="context-menu-item" data-action="edit-remark">添加/编辑备注</div>`;
-    
-    if (cellData.type === 'remark') {
-        menuItems += `<div class="context-menu-item" data-action="clear-cell">清空单元格</div>`;
+    if (!isMultiSelect) {
+        menuItems += `<div class="context-menu-item" data-action="edit-remark">添加/编辑备注</div>`;
     }
 
-    // 新增功能 3: 添加最近使用过的备注
     if (recentRemarks.length > 0) {
-        menuItems += '<div class="context-menu-divider"></div>'; // 分隔线
+        menuItems += '<div class="context-menu-divider"></div>';
         menuItems += '<h6>最近的备注</h6>';
         recentRemarks.forEach(remark => {
-            menuItems += `<div class="context-menu-item recent-remark-item" data-action="apply-remark" data-remark="${remark}">${remark}</div>`;
+            menuItems += `<div class="context-menu-item recent-remark-item" data-action="apply-remark" data-remark="${remark}">应用: "${remark}"</div>`;
         });
     }
 
@@ -1632,62 +1702,79 @@ function showCustomContextMenu(x, y, row, col) {
     menu.addEventListener('click', (event) => {
         const action = event.target.dataset.action;
 
-        if (action === 'delete-seat') {
-            customLayoutData[row][col] = { type: 'empty', content: null, seat_id: null };
-            renderCustomTableEditor();
-        } else if (action === 'edit-remark') {
-            const cellElement = document.querySelector(`.custom-cell[data-row="${row}"][data-col="${col}"]`);
-            if (cellElement) {
-                cellElement.innerHTML = `<input type="text" class="remark-input" value="${cellData.content || ''}" />`;
-                const input = cellElement.querySelector('input');
-                input.focus();
-                input.select();
-
-                const saveRemark = () => {
-                    const newRemark = input.value.trim();
-                    if (newRemark) {
-                        customLayoutData[row][col] = { type: 'remark', content: newRemark, seat_id: null };
-                        // 新增功能 3: 将新备注添加到最近列表中
-                        if (!recentRemarks.includes(newRemark)) {
-                            recentRemarks.unshift(newRemark); // 添加到最前面
-                            if (recentRemarks.length > 5) { // 最多保留5个
-                                recentRemarks.pop();
-                            }
-                        }
-                    } else {
-                        // 如果备注被清空，则将单元格变回 empty
-                        customLayoutData[row][col] = { type: 'empty', content: null, seat_id: null };
-                    }
-                    renderCustomTableEditor();
-                };
-
-                input.addEventListener('blur', saveRemark);
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        input.blur(); // 触发 blur 事件来保存
-                    } else if (e.key === 'Escape') {
-                        renderCustomTableEditor(); // 取消编辑，恢复原状
+        switch (action) {
+            case 'create-seats':
+                targetCells.forEach(cell => {
+                    customLayoutData[cell.row][cell.col] = { type: 'seat', content: null, seat_id: null };
+                });
+                break;
+            case 'delete-seats':
+                targetCells.forEach(cell => {
+                    if (customLayoutData[cell.row][cell.col].type === 'seat') {
+                        customLayoutData[cell.row][cell.col] = { type: 'empty', content: null, seat_id: null };
                     }
                 });
+                break;
+            case 'clear-cells':
+                targetCells.forEach(cell => {
+                    customLayoutData[cell.row][cell.col] = { type: 'empty', content: null, seat_id: null };
+                });
+                break;
+            case 'edit-remark': { // 单独处理，因为它只对单个单元格有效
+                const cellElement = document.querySelector(`.custom-cell[data-row="${row}"][data-col="${col}"]`);
+                if (cellElement) {
+                    const cellData = customLayoutData[row][col];
+                    cellElement.innerHTML = `<input type="text" class="remark-input" value="${cellData.content || ''}" />`;
+                    const input = cellElement.querySelector('input');
+                    input.focus();
+                    input.select();
+
+                    const saveRemark = () => {
+                        const newRemark = input.value.trim();
+                        if (newRemark) {
+                            customLayoutData[row][col] = { type: 'remark', content: newRemark, seat_id: null };
+                            if (!recentRemarks.includes(newRemark)) {
+                                recentRemarks.unshift(newRemark);
+                                if (recentRemarks.length > 5) recentRemarks.pop();
+                            }
+                        } else {
+                            customLayoutData[row][col] = { type: 'empty', content: null, seat_id: null };
+                        }
+                        renderCustomTableEditor();
+                        clearSelection();
+                    };
+
+                    input.addEventListener('blur', saveRemark);
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') input.blur();
+                        else if (e.key === 'Escape') {
+                            renderCustomTableEditor();
+                            clearSelection();
+                        }
+                    });
+                }
+                break;
             }
-        } else if (action === 'clear-cell') {
-            customLayoutData[row][col] = { type: 'empty', content: null, seat_id: null };
-            renderCustomTableEditor();
-        } else if (action === 'apply-remark') {
-            const remarkToApply = event.target.dataset.remark;
-            if (remarkToApply) {
-                customLayoutData[row][col] = { type: 'remark', content: remarkToApply, seat_id: null };
-                renderCustomTableEditor();
+            case 'apply-remark': {
+                const remarkToApply = event.target.dataset.remark;
+                if (remarkToApply) {
+                    targetCells.forEach(cell => {
+                        customLayoutData[cell.row][cell.col] = { type: 'remark', content: remarkToApply, seat_id: null };
+                    });
+                }
+                break;
             }
         }
         
-        // 只有在不是编辑模式时才立即移除菜单
         if (action !== 'edit-remark') {
+            renderCustomTableEditor();
+            clearSelection();
             menu.remove();
+        } else {
+            menu.remove(); // 编辑模式也移除菜单，避免干扰输入
         }
     });
 
-    // 点击菜单外部时关闭菜单
     setTimeout(() => {
         document.addEventListener('click', () => menu.remove(), { once: true });
     }, 0);

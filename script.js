@@ -880,7 +880,7 @@ ${personnelDataToMarkdown(personnelData)}
                                     personnelThinkingOutputDiv.classList.remove('thinking-output-visible');
                                 }
                                 const generatingGif = markdownOutputWrapper.querySelector('.streaming-gif');
-                                if (generatingGif.style.display === 'none') {
+                                if (generatingGif && generatingGif.style.display === 'none') {
                                     manageStreamingGif(markdownOutputDiv, generatingGif, 'start');
                                 }
 
@@ -1977,7 +1977,7 @@ ${seatTableFormatToUse}
                                 aiThinkingOutputDiv.classList.remove('thinking-output-visible');
                             }
                             const generatingGif = tablePreviewDiv.querySelector('.streaming-gif');
-                             if (generatingGif.style.display === 'none') {
+                             if (generatingGif && generatingGif.style.display === 'none') {
                                 manageStreamingGif(tablePreviewDiv, generatingGif, 'start');
                             }
 
@@ -2561,7 +2561,7 @@ ${seatMappingInfo}
                                     seatModifyThinkingOutputDiv.classList.remove('thinking-output-visible');
                                 }
                                 const generatingGif = seatModificationOutput.querySelector('.streaming-gif');
-                                if (generatingGif.style.display === 'none') {
+                                if (generatingGif && generatingGif.style.display === 'none') {
                                     manageStreamingGif(seatModificationOutput, generatingGif, 'start');
                                 }
                                 accumulatedResponse += outputContent;
